@@ -14,10 +14,10 @@ Z-score · IF · EWMA"];
 Tri thức y khoa
 Rule engine (9 luật)"];
   t3     [label="Tầng 3
-Fusion & Quyết định
-Bayesian + isotonic"];
+Tổng hợp có trọng số
+& Quyết định"];
   ml     [label="LightGBM
-(hiệu chỉnh isotonic)", shape=box, style="rounded,dashed,filled", fillcolor="#ececec"];
+(điểm mô hình)", shape=box, style="rounded,dashed,filled", fillcolor="#ececec"];
   out    [fillcolor="#f2f2f2", label="Kết quả: risk level
 + bằng chứng + khuyến nghị"];
 

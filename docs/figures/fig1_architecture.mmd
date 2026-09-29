@@ -2,8 +2,8 @@ graph TD
     A["Chuỗi thời gian chỉ số cơ thể"]
     B["Tầng 1: Thống kê cá nhân<br/>Z-score · Isolation Forest · EWMA"]
     C["Tầng 2: Tri thức y khoa<br/>Rule engine (9 luật)"]
-    D["Tầng 3: Fusion & Quyết định<br/>Bayesian + isotonic"]
-    M["LightGBM<br/>(hiệu chỉnh isotonic)"]
+    D["Tầng 3: Tổng hợp có trọng số & Quyết định<br/>(model score, không hiệu chỉnh runtime)"]
+    M["LightGBM<br/>(điểm mô hình — model score)"]
     E["Kết quả: risk level + bằng chứng + khuyến nghị"]
 
     A --> B --> C --> D --> E

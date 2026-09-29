@@ -24,10 +24,8 @@ Mô hình ML"];
 
   subgraph cluster_hang3 {
     label=""; style=invis;
-    fu  [label="Fusion
-Bayesian"];
-    ca  [label="Hiệu chỉnh
-isotonic"];
+    fu  [label="Tổng hợp
+có trọng số"];
     ex  [label="Giải thích
 & báo cáo"];
     o   [label="Kết quả
@@ -36,11 +34,11 @@ JSON"];
 
   edge [style=invis];
   t1 -> t2 -> t3;
-  fu -> ca -> ex -> o;
+  fu -> ex -> o;
   edge [style=solid];
   {rank=same; in; st;}
   {rank=same; t1; t2; t3;}
-  {rank=same; fu; ca; ex; o;}
+  {rank=same; fu; ex; o;}
 
   in -> st;
   st -> t1;
@@ -49,7 +47,6 @@ JSON"];
   t1 -> fu;
   t2 -> fu;
   t3 -> fu;
-  fu -> ca;
-  ca -> ex;
+  fu -> ex;
   ex -> o;
 }

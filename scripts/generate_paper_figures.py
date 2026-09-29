@@ -17,7 +17,7 @@ Chạy:
     fig7_architecture_3d.png     Hình 7: Kiến trúc 3 tầng — khối hộp 3D (mermaid, không icon)
     fig8_tier1_detail.png        Hình 8: Chi tiết Tầng 1 (mermaid, không icon)
     fig9_tier2_rules.png         Hình 9: Chi tiết Tầng 2 — Rule Engine (mermaid, không icon)
-    fig10_tier3_fusion.png       Hình 10: Chi tiết Tầng 3 — Fusion (mermaid, không icon)
+    fig10_tier3_fusion.png       Hình 10: Chi tiết Tầng 3 — tổng hợp có trọng số (mermaid, không icon)
 
 Nguyên tắc DUA: chỉ vẽ dữ liệu TỔNG HỢP (curves, AUC). Không dùng raw records,
 không nhúng ID/subject bệnh nhân.
@@ -134,8 +134,8 @@ FIG1_DOT = '''digraph "architecture" {
   input  [label="Chuỗi thời gian\nchỉ số cơ thể"];
   t1     [label="Tầng 1\nThống kê cá nhân\nZ-score · IF · EWMA"];
   t2     [label="Tầng 2\nTri thức y khoa\nRule engine (9 luật)"];
-  t3     [label="Tầng 3\nFusion & Quyết định\nBayesian + isotonic"];
-  ml     [label="LightGBM\n(hiệu chỉnh isotonic)", shape=box, style="rounded,dashed,filled", fillcolor="#ececec"];
+  t3     [label="Tầng 3\nTổng hợp có trọng số\n& Quyết định"];
+  ml     [label="LightGBM\n(điểm mô hình)", shape=box, style="rounded,dashed,filled", fillcolor="#ececec"];
   out    [fillcolor="#f2f2f2", label="Kết quả: risk level\n+ bằng chứng + khuyến nghị"];
 
   input -> t1;
@@ -149,8 +149,8 @@ FIG1_MMD = """graph TD
     A["Chuỗi thời gian chỉ số cơ thể"]
     B["Tầng 1: Thống kê cá nhân<br/>Z-score · Isolation Forest · EWMA"]
     C["Tầng 2: Tri thức y khoa<br/>Rule engine (9 luật)"]
-    D["Tầng 3: Fusion & Quyết định<br/>Bayesian + isotonic"]
-    M["LightGBM<br/>(hiệu chỉnh isotonic)"]
+    D["Tầng 3: Tổng hợp có trọng số & Quyết định<br/>(model score, không hiệu chỉnh runtime)"]
+    M["LightGBM<br/>(điểm mô hình — model score)"]
     E["Kết quả: risk level + bằng chứng + khuyến nghị"]
 
     A --> B --> C --> D --> E
@@ -182,19 +182,18 @@ FIG2_DOT = '''digraph "dataflow" {
 
   subgraph cluster_hang3 {
     label=""; style=invis;
-    fu  [label="Fusion\nBayesian"];
-    ca  [label="Hiệu chỉnh\nisotonic"];
+    fu  [label="Tổng hợp\ncó trọng số"];
     ex  [label="Giải thích\n& báo cáo"];
     o   [label="Kết quả\nJSON"];
   }
 
   edge [style=invis];
   t1 -> t2 -> t3;
-  fu -> ca -> ex -> o;
+  fu -> ex -> o;
   edge [style=solid];
   {rank=same; in; st;}
   {rank=same; t1; t2; t3;}
-  {rank=same; fu; ca; ex; o;}
+  {rank=same; fu; ex; o;}
 
   in -> st;
   st -> t1;
@@ -203,8 +202,7 @@ FIG2_DOT = '''digraph "dataflow" {
   t1 -> fu;
   t2 -> fu;
   t3 -> fu;
-  fu -> ca;
-  ca -> ex;
+  fu -> ex;
   ex -> o;
 }'''
 
@@ -213,10 +211,9 @@ FIG2_MMD = """graph LR
     B --> C["Tầng 1<br/>Thống kê"]
     C --> D["Tầng 2<br/>Luật"]
     D --> E["Tầng 3<br/>ML"]
-    E --> F["Fusion<br/>Bayesian"]
-    F --> G["Hiệu chỉnh<br/>isotonic"]
-    G --> H["Giải thích<br/>& báo cáo"]
-    H --> I["Kết quả JSON"]
+    E --> F["Tổng hợp<br/>có trọng số"]
+    F --> G["Giải thích<br/>& báo cáo"]
+    G --> H["Kết quả JSON"]
 """
 
 
@@ -380,8 +377,8 @@ def fig6_delta():
 FIG7_MMD = """flowchart TD
     IN[("ĐẦU VÀO: 10 chỉ số cơ thể")] -->|resample + impute + baseline 90 ngày| T1
     T1["TẦNG 1 — PHÁT HIỆN BẤT THƯỜNG CÁ NHÂN HÓA\\nZ-Score (|Z| ≥ 2,0 · 90 ngày) · IF (contamination 0,05)\\nEWMA λ = 0,2 · Dự báo α = 0,3, |Z| ≥ 2,5"] -->|"AnomalyRecord: metric, z_score, flagged, trend, forecast_z"| T2["TẦNG 2 — ÁNH XẠ TRI THỨC Y KHOA\\nRule Engine JSON · 9 luật\\nseverity ∈ [0,5 − 0,9] · audit trail + versioning"]
-    T2 -->|"RuleHit: rule_id, severity, system, evidence, source_url"| T3["TẦNG 3 — TỔNG HỢP RỦI RO\\nFusion Bayesian [0,30; 0,35; 0,25; 0,10]\\nIsotonic · Sàn an toàn: sev ≥ 0,7 → score ≥ 0,50"]
-    ML["LightGBM\\nhiệu chỉnh isotonic"] -.->|ml_score ∈ 0–1| T3
+    T2 -->|"RuleHit: rule_id, severity, system, evidence, source_url"| T3["TẦNG 3 — TỔNG HỢP CÓ TRỌNG SỐ\\nDesign weights [0,30; 0,35; 0,25; 0,10]\\nSàn an toàn: sev ≥ 0,7 → score ≥ 0,50"]
+    ML["LightGBM\\n(model score, chưa hiệu chỉnh)"] -.->|ml_score ∈ 0–1| T3
     T3 -->|risk_level + bằng chứng + khuyến nghị| OUT[("THẤP · TRUNG BÌNH · CAO")]
     style IN fill:#eee,stroke:#777,color:#222
     style T1 fill:#eaf2fb,stroke:#3498db,color:#222
@@ -450,10 +447,10 @@ FIG10_MMD = """block-beta
   columns 4
   C1{{"STAT\\nmin(1, max|Z|/4)"}}:1
   C2{{"KNOWLEDGE\\nmin(1, max_sev)"}}:1
-  C3{{"ML\\nLightGBM + iso"}}:1
+  C3{{"ML\\nLightGBM (model score)"}}:1
   C4{{"TREND\\nmin(1, 2·rise/N)"}}:1
   space:4
-  FUS["FUSION BAYESIAN\\ntotal = Σ(wᵢ × scoreᵢ)\\ntrọng số [0,30; 0,35; 0,25; 0,10]"]:4
+  FUS["TỔNG HỢP CÓ TRỌNG SỐ\\ntotal = Σ(wᵢ × scoreᵢ)\\ndesign weights [0,30; 0,35; 0,25; 0,10]"]:4
   space:4
   SF("SÀN AN TOÀN\\nsev ≥ 0,7 → total ≥ 0,50"):4
   space:4

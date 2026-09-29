@@ -90,6 +90,10 @@ Thuật toán 1 tóm tắt luồng thực thi này. Đầu vào là bảng chu�
 | 11: | Sinh components, evidence, recommendations, metrics\_detail và data\_sufficiency. |
 | 12: | Trả về O; chỉ thêm natural\_explanation khi explainer tùy chọn được cung cấp. |
 
+<mark>**Hình 1.** Kiến trúc ba tầng của khung đánh giá nguy cơ; Tầng 3 sử dụng tổng hợp có trọng số với điểm mô hình (model score) và không áp dụng bộ hiệu chỉnh tại thời điểm vận hành.
+
+![Kiến trúc ba tầng](figures/fig7_architecture_3d.png)</mark>
+
 **3.2. Đường cơ sở cá nhân và phát hiện bất thường**
 
 Đường cơ sở của mỗi chỉ số được ước lượng bằng trung bình trượt và độ lệch chuẩn trượt trên cửa sổ 90 ngày, với tối thiểu năm quan sát hợp lệ. Tại thời điểm $t$, Z-score cá nhân hóa được tính theo công thức (1) dưới đây:
@@ -158,6 +162,10 @@ Trong đó, ${N}_{rf}$ là số bản ghi đồng thời được gắn cờ và
 | Điểm thô được tính theo (6): |  |
 | $${R}_{raw}=0.30S+0.35K+0.25M+0.10T$$ | (6) |
 
+<mark>**Hình 2.** Chi tiết Tầng 3 — bốn điểm thành phần (STAT, KNOWLEDGE, ML, TREND) được tổng hợp bằng trọng số thiết kế [0,30; 0,35; 0,25; 0,10]; sàn an toàn khi mức độ nghiêm trọng của luật ≥ 0,7; sau đó phân tầng THẤP/TRUNG BÌNH/CAO.
+
+![Chi tiết Tầng 3](figures/fig10_tier3_fusion.png)</mark>
+
 Điểm $R$ sau tổng hợp được giới hạn trong $\left[{1}\right]$và làm tròn đến ba chữ số thập phân. Nếu có luật kích hoạt với severity ≥ 0.7, hệ thống áp dụng sàn điểm (floor) $R←max⁡(R,\ 0.50)$. Phân tầng phần mềm là THẤP khi R \< 0.33; TRUNG BÌNH khi 0.33 ≤ R \< 0.66; và CAO khi R ≥ 0.66. <mark>Các ngưỡng phân tầng chỉ được áp dụng khi tập hợp các thành phần bắt buộc có đủ bằng chứng theo cấu hình đã định; khi thiếu bằng chứng (ví dụ không có Tầng 1 hoặc không có điểm học máy), hệ thống trả về INSUFFICIENT\_DATA thay vì dùng chung ngưỡng 0.33/0.66</mark>. Các trọng số, safety floor và ngưỡng phân tầng là cấu hình của nguyên mẫu. Vì phép tính không định nghĩa xác suất tiên nghiệm (prior), hàm khả năng (likelihood) và xác suất hậu nghiệm (posterior), phương pháp này hoàn toàn là tổng hợp bằng chứng theo trọng số. Đầu ra hệ thống là điểm số nguy cơ tổng hợp $R∈\left[{1}\right]$ phục vụ mục đích tham chiếu, không đại diện cho xác suất biến cố lâm sàng tuyệt đối hay kết quả suy luận Bayes.
 
 Hệ thống trả về đầu ra có cấu trúc gồm điểm nguy cơ tổng hợp R (risk\_score), mức phân tầng (risk\_level), các điểm thành phần S, K, M, T, thông tin bằng chứng, luật được kích hoạt, khuyến nghị, chi tiết theo từng chỉ số (metrics\_detail) và mức độ đầy đủ của dữ liệu. Quy trình đánh giá còn cung cấp tóm tắt Tầng 1, ghi chú về khả năng thực hiện phân tích chuỗi thời gian và điểm đầu ra của mô hình học máy. Việc quản lý phiên bản và nhật ký thay đổi của cơ sở tri thức cho phép theo dõi lịch sử cập nhật luật; đồng thời, mã luật, mức độ nghiêm trọng, nguồn tham chiếu và các thông tin thống kê liên quan hỗ trợ truy vết các thành phần kỹ thuật dẫn đến kết quả. Cơ chế này tăng tính minh bạch và khả năng kiểm tra lại hoạt động của hệ thống, nhưng không được diễn giải như bằng chứng về suy luận, tính đúng hoặc hiệu quả lâm sàng \[5, 6, 12\].
@@ -202,6 +210,10 @@ Với MIMIC-IV, ngày tháng được dịch chuyển riêng theo từng bệnh 
 Khả năng phân biệt của mô hình được đánh giá chủ yếu bằng ROC-AUC; PR-AUC được sử dụng bổ sung đối với các bài toán có tỷ lệ biến cố thấp. Brier score và sai số hiệu chỉnh kỳ vọng (ECE) được dùng để đánh giá chất lượng dự báo xác suất và được diễn giải tách biệt với khả năng phân biệt; trong đó Brier score là thước đo sai số xác suất tổng hợp, không phải chỉ số hiệu chỉnh thuần túy. Với NHANES gộp, kết quả qua năm hạt giống ngẫu nhiên được báo cáo bằng giá trị trung bình và độ lệch chuẩn (SD); SD phản ánh biến thiên giữa các lần chạy, không phải khoảng tin cậy.
 
 Đối với NHANES-LMF, ROC-AUC trên nhóm 2017–2018 là chỉ số phân biệt chính; PR-AUC, Brier score và ECE là các chỉ số bổ sung. Harrell C-index chỉ được sử dụng trong phân tích thứ cấp với thời gian theo dõi giới hạn ở 60 tháng và điểm nguy cơ từ mô hình tử vong 12 tháng; do đó, chỉ số này không đại diện trực tiếp cho kết cục tử vong 12 tháng. Với MIMIC-IV, tỷ lệ thu nhận biến cố trong 20% lượt nhập viện có điểm nguy cơ cao nhất được dùng để mô tả khả năng xếp hạng và tập trung biến cố, không tương đương độ nhạy tại một ngưỡng lâm sàng định trước. Vì vậy, các chỉ số được diễn giải trong phạm vi đánh giá hiệu năng kỹ thuật của các thiết kế thực nghiệm đã nêu.
+
+<mark>**Hình 3.** Giao thức kiểm định temporally trên NHANES-LMF — phát triển mô hình trên 2015–2016, đánh giá trên 2017–2018, theo dõi tử vong ≤ 12 tháng kể từ thời điểm khám MEC.
+
+![Timeline kiểm định temporally](figures/fig4_temporal_timeline.png)</mark>
 
 # **5\. Kết quả và thảo luận**
 
@@ -271,6 +283,10 @@ NHANES-LMF \[8\] được dùng cho bài toán dự báo tử vong mọi nguyên
 Trên tập đánh giá 2017–2018, các <mark>ước lượng điểm (point estimate)</mark> của Logistic Regression là ROC-AUC 0.8209 và PR-AUC 0.0794, <mark>gợi ý</mark> khả năng phân biệt tốt hơn LightGBM (0.7709 và 0.0459); <mark>tuy nhiên, khoảng tin cậy 95% bằng bootstrap (2.000 lần lặp, tái lấy mẫu theo bệnh nhân) của hai mô hình chồng lấn nhau (Bảng 8), nên nghiên cứu chưa kết luận khác biệt giữa hai mô hình có ý nghĩa thống kê</mark>. LightGBM đạt ROC-AUC và PR-AUC bằng 1,0 trên tập huấn luyện (Bảng 8) — <mark>bằng chứng bão hòa/overfit trên miền sự kiện thưa (49 biến cố); kết quả train không được dùng làm bằng chứng so sánh</mark>. Với tỷ lệ biến cố 1.40%, PR-AUC được báo cáo bổ sung cho ROC-AUC. Do phân hoạch ngẫu nhiên tái sử dụng bộ suy diễn giá trị thiếu và chuẩn hóa đã được ước lượng từ tập 2015–2016, ΔROC-AUC \-0.0202 và \-0.0101 chỉ là chênh lệch mô tả giữa hai cách phân hoạch. Brier score và ECE được tính từ đầu ra thô; kết quả sau isotonic <mark>chỉ là phân tích thăm dò</mark> vì bộ hiệu chỉnh được khớp trên dự đoán trong chính mẫu của tập huấn luyện (in-sample)
 
 Harrell C-index \[18\] đạt 0.8217 với Logistic Regression và 0.7763 với LightGBM trong phân tích phụ có thời gian theo dõi giới hạn tối đa 60 tháng. Risk score vẫn lấy từ mô hình tử vong 12 tháng; C-index chỉ đánh giá bổ sung khả năng xếp hạng nguy cơ trên thời gian theo dõi dài hơn, không phải chỉ số trực tiếp của biến kết cục được định nghĩa trước 12 tháng và không làm thay đổi khoảng dự báo 12 tháng.
+
+<mark>**Hình 4.** Đường cong ROC của hai mô hình trên tập đánh giá NHANES-LMF 2017–2018 (tử vong mọi nguyên nhân trong 12 tháng) và MIMIC-IV v3.1 theo phân hoạch năm đã dịch chuyển (tử vong trong 30 ngày).
+
+![ROC hai bộ dữ liệu](figures/fig5_roc_dual_dataset.png)</mark>
 
 ## ***5.3. Kiểm thử độ ổn định trên MIMIC-IV v3.1 với phân hoạch theo năm đã dịch chuyển***
 

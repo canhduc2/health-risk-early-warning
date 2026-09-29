@@ -2,10 +2,10 @@ block-beta
   columns 4
   C1{{"STAT\nmin(1, max|Z|/4)"}}:1
   C2{{"KNOWLEDGE\nmin(1, max_sev)"}}:1
-  C3{{"ML\nLightGBM + iso"}}:1
+  C3{{"ML\nLightGBM (model score)"}}:1
   C4{{"TREND\nmin(1, 2·rise/N)"}}:1
   space:4
-  FUS["FUSION BAYESIAN\ntotal = Σ(wᵢ × scoreᵢ)\ntrọng số [0,30; 0,35; 0,25; 0,10]"]:4
+  FUS["TỔNG HỢP CÓ TRỌNG SỐ\ntotal = Σ(wᵢ × scoreᵢ)\ndesign weights [0,30; 0,35; 0,25; 0,10]"]:4
   space:4
   SF("SÀN AN TOÀN\nsev ≥ 0,7 → total ≥ 0,50"):4
   space:4
