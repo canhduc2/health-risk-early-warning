@@ -120,7 +120,7 @@
       "modes": [
         "htn"
       ],
-      "status": "active",
+      "status": "draft",
       "rule_version": 1.0,
       "created_by": "legacy",
       "approved_by": null,
@@ -151,7 +151,7 @@
         "htn",
         "cv"
       ],
-      "status": "active",
+      "status": "draft",
       "rule_version": 1.0,
       "created_by": "legacy",
       "approved_by": null,
@@ -180,7 +180,7 @@
       "modes": [
         "htn"
       ],
-      "status": "active",
+      "status": "draft",
       "rule_version": 1.0,
       "created_by": "legacy",
       "approved_by": null,
@@ -214,7 +214,7 @@
       "modes": [
         "dm"
       ],
-      "status": "active",
+      "status": "draft",
       "rule_version": 1.0,
       "created_by": "legacy",
       "approved_by": null,
@@ -243,7 +243,7 @@
       "modes": [
         "dm"
       ],
-      "status": "active",
+      "status": "draft",
       "rule_version": 1.0,
       "created_by": "legacy",
       "approved_by": null,
@@ -273,7 +273,7 @@
       "modes": [
         "ckd"
       ],
-      "status": "active",
+      "status": "draft",
       "rule_version": 1.0,
       "created_by": "legacy",
       "approved_by": null,
@@ -302,7 +302,7 @@
       "modes": [
         "ckd"
       ],
-      "status": "active",
+      "status": "draft",
       "rule_version": 1.0,
       "created_by": "legacy",
       "approved_by": null,
@@ -331,7 +331,7 @@
       "modes": [
         "resp"
       ],
-      "status": "active",
+      "status": "draft",
       "rule_version": 1.0,
       "created_by": "legacy",
       "approved_by": null,
@@ -360,7 +360,7 @@
       "modes": [
         "met"
       ],
-      "status": "active",
+      "status": "draft",
       "rule_version": 1.0,
       "created_by": "legacy",
       "approved_by": null,

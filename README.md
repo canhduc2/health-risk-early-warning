@@ -41,7 +41,7 @@ Tầng 1  Phân tích bất thường & xu hướng cá nhân (Z-Score, Isolatio
         sai số dự báo chuỗi thời gian — EWMA offline, sẵn sàng Chronos/TimesFM)
 Tầng 2  Ánh xạ tri thức y khoa (rule engine trên JSON, 9 luật từ ESC/ESH, ADA, KDIGO, WHO)
 Tầng 3  Tổng hợp rủi ro & hỗ trợ quyết định (6 mô hình ML XGB/LGBM/RF/FT/MLP/LR,
-        hàm tổng hợp Bayesian với trọng số tối ưu)
+        tổng hợp có trọng số với trọng số là tham số thiết kế (design parameters) của nguyên mẫu)
 ```
 
 ## Kết quả chính

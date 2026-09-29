@@ -1,0 +1,19 @@
+{
+  "n": 4773,
+  "n_boot": 2000,
+  "seed": 42,
+  "method": "percentile bootstrap",
+  "lr": {
+    "auc": 0.8208,
+    "ci95_lo": 0.7736,
+    "ci95_hi": 0.8654,
+    "sd": 0.0236
+  },
+  "lgbm": {
+    "auc": 0.7709,
+    "ci95_lo": 0.719,
+    "ci95_hi": 0.8199,
+    "sd": 0.0255
+  },
+  "interpretation": "overlapping"
+}

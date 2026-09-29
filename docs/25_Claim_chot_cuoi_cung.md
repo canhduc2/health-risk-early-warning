@@ -188,14 +188,20 @@ không phải lịch chung.
 
 ## C8 — LMF: LR vs LGBM
 
-### Quyết định: HẠ (thêm CI nếu đủ thời gian)
+### Quyết định: HẠ (đã thêm bootstrap 95% CI — vẫn overlap)
 
 LMF chỉ có 49 events (train) / 67 (test); LGBM train `ROC-AUC=1.0, AUPRC=1.0`.
+
+**Kết quả bootstrap (2.000 lần lặp, tái lấy mẫu theo bệnh nhân, test 2017–2018):**
+`experiments/EXP-TEMPORAL-LMF/bootstrap_ci.json` — LR [0.7736; 0.8654], LGBM
+[0.7190; 0.8199] → hai khoảng chồng lấn, chưa kết luận khác biệt có ý nghĩa
+thống kê. Đã thêm hàng CI vào Bảng 8 của manuscript.
 
 **Wording chốt:**
 
 > "Các point estimate gợi ý LR phân biệt tốt hơn trên test (LR 0,8209; LGBM
-> 0,7709); chưa kết luận khác biệt có ý nghĩa do chưa có ước lượng bất định.
+> 0,7709); tuy nhiên khoảng tin cậy 95% bootstrap của hai mô hình chồng lấn
+> nhau nên chưa kết luận khác biệt có ý nghĩa thống kê.
 > Mô hình boosting cho AUC/AUPRC đạt mức bão hòa trên tập huấn luyện — bằng
 > chứng overfit rõ ràng trên miền sự kiện thưa."
 

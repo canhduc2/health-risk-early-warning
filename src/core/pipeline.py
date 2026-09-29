@@ -23,35 +23,9 @@ VALUE_COLUMNS = [
     "glucose_fasting", "hba1c", "creatinine", "egfr", "spo2", "bmi",
 ]
 
-# Nạp mô hình ML một lần (lazy singleton). Không có model -> ml_score = 0.
+# Nạp mô hình ML một lần (lazy singleton). Không có model -> ml_score = None.
 _ML_MODEL: RiskModel | None = None
 _ML_TRIED = False
-# Calibrator isotonic (fit trên validation của benchmark) — P0.1/docs 15 K1.
-_ML_CALIBRATOR = None
-_ML_CAL_TRIED = False
-
-
-def load_ml_calibrator():
-    """Nạp calibrator đi kèm model sản xuất (nếu có evidence package)."""
-    global _ML_CALIBRATOR, _ML_CAL_TRIED
-    if _ML_CAL_TRIED:
-        return _ML_CALIBRATOR
-    _ML_CAL_TRIED = True
-    import json as _json
-    from pathlib import Path as _Path
-
-    exp_dir = _Path("experiments") / "EXP-ML-LGBM-42"
-    try:
-        selected = _json.loads((exp_dir / "calibration.json").read_text(
-            encoding="utf-8")).get("selected", "isotonic")
-        p = exp_dir / f"calibrator_{selected}.joblib"
-        if p.exists():
-            import joblib
-
-            _ML_CALIBRATOR = joblib.load(p)
-    except Exception:
-        _ML_CALIBRATOR = None
-    return _ML_CALIBRATOR
 
 
 def _load_joblib(path):
@@ -77,10 +51,12 @@ def load_ml_model(config: Config) -> RiskModel | None:
 
 
 def _ml_score_for(df: pd.DataFrame, value_cols: list[str], config: Config) -> float | None:
-    """Điểm rủi ro dự đoán từ LightGBM trên đặc trưng chuỗi hiện tại.
+    """Điểm mô hình (model score) từ LightGBM trên đặc trưng chuỗi hiện tại.
 
-    Điểm trả về đã qua calibrator (isotonic, fit trên validation của benchmark)
-    để fusion dùng đúng nghĩa xác suất — docs/15 K1, đối sách S4 docs/13.
+    Đây là đầu ra THÔ của mô hình sản xuất, không qua calibrator: calibrator
+    hiện không được áp dụng ở runtime vì model và calibrator không tạo thành
+    một cặp tái lập được (claim C3). Không diễn giải giá trị này như xác suất
+    biến cố lâm sàng đã hiệu chỉnh.
     """
     if not config.use_ml or len(df) < config.ml_min_days:
         return None
@@ -91,16 +67,7 @@ def _ml_score_for(df: pd.DataFrame, value_cols: list[str], config: Config) -> fl
     fm = fm.drop(columns=[c for c in ("timestamp", "patient_id") if c in fm.columns])
     if fm.empty:
         return None
-    score = model.predict_features(fm.tail(1))
-    calibrator = load_ml_calibrator()
-    if calibrator is not None:
-        from src.experiments.calibration import apply_calibration
-
-        try:
-            return float(apply_calibration(calibrator, [score])[0])
-        except Exception:
-            return score  # calibrator lỗi không được phá luồng đánh giá
-    return score
+    return float(model.predict_features(fm.tail(1)))
 
 
 def assess_patient(

@@ -265,63 +265,29 @@ class RiskScorer:
         elif cond.get("metric"):
             out.add(cond["metric"])
 
-    def score(
+    def _build_evidence(
         self,
         records: list[AnomalyRecord],
-        ml_score: float | None = None,
-        snapshot: dict[str, float] | None = None,
-        modes: list[str] | None = None,
-    ) -> RiskResult:
-        """Tính điểm tổng hợp và sinh đầu ra chuẩn 3 thành phần.
-
-        modes: chế độ chẩn đoán chuyên biệt (htn/dm/ckd/resp/met/...). Truyền
-        None/"all" để xét mọi luật. Dùng khi chỉ có bộ chỉ số tương ứng (vd
-        máy đo huyết áp ở nhà -> mode="htn").
-        """
-        from src.tier2_knowledge.rules import normalize_modes
-
-        modes = normalize_modes(modes)
-        hits = self.kb.evaluate_from_records(records, modes=modes) if records else []
-        if snapshot and not records:
-            hits = self.kb.evaluate(snapshot, modes=modes)
-        suggestions = self.kb.suggest_for_flagged(records) if records else {}
-
-        components = {
-            "stat": self._stat_score(records),
-            "knowledge": self._knowledge_score(hits),
-            "ml": min(1.0, ml_score or 0.0),
-            "trend": self._trend_score(records),
-        }
-        w = self.config.risk_weights
-        total = sum(components[k] * w[k] for k in w)
-        total = round(min(1.0, max(0.0, total)), 3)
-
-        # An toàn lâm sàng: luật nghiêm trọng kích hoạt -> ít nhất TRUNG_BINH
-        if any(h.severity >= self.config.critical_rule_severity for h in hits):
-            total = max(total, self.config.critical_rule_floor)
-            total = round(total, 3)
-
-        low, high = self.config.risk_level_thresholds
-        level = "CAO" if total >= high else ("TRUNG_BINH" if total >= low else "THAP")
-
-        affected = sorted({h.system_label for h in hits} | set(suggestions.keys()))
-        recommendations = sorted({h.specialty for h in hits} | set(suggestions.values()))
-
+        hits: list[RuleHit],
+        suggestions: dict[str, str],
+    ) -> list[dict[str, Any]]:
+        """Gom bằng chứng Tầng 1 + luật kích hoạt + khuyến nghị theo dõi."""
         evidence: list[dict[str, Any]] = []
         for r in records:
-            if r.flagged:
-                evidence.append(
-                    {
-                        "metric": r.metric,
-                        "current": r.current,
-                        "baseline_mean": r.baseline_mean,
-                        "z_score": r.z_score,
-                        "message": (
-                            f"{r.metric}: giá trị {r.current:.1f} lệch {r.z_score:+.2f}σ "
-                            f"so với trung bình cá nhân {r.baseline_mean:.1f} (xu hướng {r.trend})"
-                        ),
-                    }
-                )
+            if not r.flagged:
+                continue
+            evidence.append(
+                {
+                    "metric": r.metric,
+                    "current": r.current,
+                    "baseline_mean": r.baseline_mean,
+                    "z_score": r.z_score,
+                    "message": (
+                        f"{r.metric}: giá trị {r.current:.1f} lệch {r.z_score:+.2f}σ "
+                        f"so với trung bình cá nhân {r.baseline_mean:.1f} (xu hướng {r.trend})"
+                    ),
+                }
+            )
         for h in hits:
             ev: dict[str, Any] = {
                 "rule_id": h.rule_id,
@@ -348,12 +314,72 @@ class RiskScorer:
                     ),
                 }
             )
+        return evidence
+
+    def score(
+        self,
+        records: list[AnomalyRecord],
+        ml_score: float | None = None,
+        snapshot: dict[str, float] | None = None,
+        modes: list[str] | None = None,
+    ) -> RiskResult:
+        """Tính điểm tổng hợp và sinh đầu ra chuẩn 3 thành phần.
+
+        modes: chế độ chẩn đoán chuyên biệt (htn/dm/ckd/resp/met/...). Truyền
+        None/"all" để xét mọi luật. Dùng khi chỉ có bộ chỉ số tương ứng (vd
+        máy đo huyết áp ở nhà -> mode="htn").
+        """
+        from src.tier2_knowledge.rules import normalize_modes
+
+        modes = normalize_modes(modes)
+        # C5: rule engine LUÔN đánh giá toàn bộ snapshot chỉ số hiện tại; records
+        # (Tầng 1) chỉ bổ sung bằng chứng đường cơ sở/xu hướng, không thay thế
+        # snapshot trong việc đánh giá luật.
+        hits = self.kb.evaluate(snapshot or {}, modes=modes) if snapshot else []
+        suggestions = self.kb.suggest_for_flagged(records) if records else {}
+
+        components = {
+            "stat": self._stat_score(records),
+            "knowledge": self._knowledge_score(hits),
+            "ml": min(1.0, ml_score) if ml_score is not None else 0.0,
+            "trend": self._trend_score(records),
+        }
+        w = self.config.risk_weights
+        total = sum(components[k] * w[k] for k in w)
+        total = round(min(1.0, max(0.0, total)), 3)
+
+        # C2: thiếu bằng chứng bắt buộc (thiếu model + thiếu Tầng 1) -> KHÔNG
+        # phân tầng bằng ngưỡng chung; trả INSUFFICIENT_DATA kèm data_sufficiency.
+        if ml_score is None and not records:
+            return RiskResult(
+                risk_level="INSUFFICIENT_DATA",
+                risk_score=total,
+                affected_systems=sorted({h.system_label for h in hits}
+                                        | set(suggestions.keys())),
+                evidence=self._build_evidence(records, hits, suggestions),
+                recommendations=sorted({h.specialty for h in hits}
+                                       | set(suggestions.values())),
+                components=components,
+                metrics_detail=self._build_metric_detail(records, snapshot or {}),
+                data_sufficiency=self._sufficiency(snapshot or {}, records, modes),
+            )
+
+        # An toàn lâm sàng: luật nghiêm trọng kích hoạt -> ít nhất TRUNG_BINH
+        if any(h.severity >= self.config.critical_rule_severity for h in hits):
+            total = max(total, self.config.critical_rule_floor)
+            total = round(total, 3)
+
+        low, high = self.config.risk_level_thresholds
+        level = "CAO" if total >= high else ("TRUNG_BINH" if total >= low else "THAP")
+
+        affected = sorted({h.system_label for h in hits} | set(suggestions.keys()))
+        recommendations = sorted({h.specialty for h in hits} | set(suggestions.values()))
 
         return RiskResult(
             risk_level=level,
             risk_score=total,
             affected_systems=affected,
-            evidence=evidence,
+            evidence=self._build_evidence(records, hits, suggestions),
             recommendations=recommendations,
             components=components,
             metrics_detail=self._build_metric_detail(records, snapshot or {}),

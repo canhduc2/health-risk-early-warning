@@ -49,20 +49,27 @@ def main() -> None:
     print(f"NHANES: n={len(df)} | positive={int(y.sum())} ({y.mean():.1%})")
 
     # --- Đánh giá khách quan: Stratified 5-fold CV -------------------------
-    imp = SimpleImputer(strategy="median")
-    X_imp = imp.fit_transform(X)
+    # C12: imputer fit TRONG từng fold (trên X[tr]) chứ không trên toàn bộ X
+    # trước khi chia — tránh leakage metadata imputer từ test vào train.
     skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=args.seed)
     aucs, auprcs = [], []
-    for tr, te in skf.split(X_imp, y):
+    for tr, te in skf.split(X, y):
+        imp = SimpleImputer(strategy="median")
+        X_tr_imp = imp.fit_transform(X.iloc[tr])
+        X_te_imp = imp.transform(X.iloc[te])
         m = RiskModel(cfg)
-        m.train(pd.DataFrame(X_imp[tr], columns=FEATURES), y[tr])
-        p = m.predict_proba_score(pd.DataFrame(X_imp[te], columns=FEATURES))
+        m.train(pd.DataFrame(X_tr_imp, columns=FEATURES), y[tr])
+        p = m.predict_proba_score(pd.DataFrame(X_te_imp, columns=FEATURES))
         aucs.append(roc_auc_score(y[te], p))
         auprcs.append(average_precision_score(y[te], p))
     print(f"CV 5-fold: AUC = {np.mean(aucs):.4f} ± {np.std(aucs):.4f} | "
           f"AUPRC = {np.mean(auprcs):.4f} ± {np.std(auprcs):.4f}")
 
     # --- Model sản xuất: train toàn bộ --------------------------------------
+    # Imputer fit trên toàn bộ dữ liệu sẵn có (production OK: giai đoạn này
+    # không còn chia train/test để ước lượng bằng chứng độc lập).
+    imp = SimpleImputer(strategy="median")
+    X_imp = imp.fit_transform(X)
     model = RiskModel(cfg)
     model.train(pd.DataFrame(X_imp, columns=FEATURES), y)
 

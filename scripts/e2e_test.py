@@ -73,10 +73,10 @@ for pid, expect_days, note in [("P001", 120, "lich su dai"), ("P003", 90, "trung
     check(f"{pid}: level={a.get('risk_level')} score={a.get('risk_score')} luat={len(ev)} ten VN: {names_ok}", ok and names_ok)
     results[pid] = a
 
-print("== 3. DEMO_HYPERTENSIVE phai kich hoat luat HA ==")
+print("== 3. DEMO_HYPERTENSIVE: khong fire luat (9 luat = draft, chua approved) ==")
 ev_ids = {e["rule_id"] for e in results["DEMO_HYPERTENSIVE"].get("evidence", []) if e.get("rule_id")}
-check("Co luat HTN/HA kich hoat", len(ev_ids) > 0, ev_ids)
-print("     rules:", sorted(ev_ids))
+check("Khong luat production nao kich hoat (C4: draft khong duoc dung dieu tri)", len(ev_ids) == 0, ev_ids)
+print("     rules fire:", sorted(ev_ids))
 md = results["DEMO_HYPERTENSIVE"].get("metrics_detail") or []
 sb = [m for m in md if m["metric"] == "systolic_bp"]
 if sb and sb[0].get("z_score") is not None:
