@@ -408,3 +408,129 @@ python -m http.server 8080 -d src/chat/static
 ---
 
 *Kế hoạch này được review và approved trước khi bắt đầu code. Mọi thay đổi scope cần cập nhật file này và commit.*
+
+---
+
+## 11. Trạng thái triển khai (Implementation Status)
+
+**Ngày cập nhật:** 2026-10-28
+
+**Trạng thái:** Đã triển khai phần code + kiểm thử offline; **chờ kiểm thử runtime**
+trên môi trường có đủ `fastapi`/`uvicorn`/`mcp`.
+
+### 11.1. Nguyên tắc bất biến đã giữ
+
+- Không sửa bất kỳ file nào trong `src/` — đã kiểm tra
+  `git diff --ignore-cr-at-eol -- src/` rỗng (không thay đổi nội dung; working
+  tree có sẵn thay đổi line-ending trên toàn repo từ trước, không do Copilot tạo).
+- `mcp_copilot/` **không import** module nào từ `src/` (có test AST tự động).
+- Chỉ đọc `src/tier2_knowledge/knowledge_base.json` để tham chiếu luật/phiên bản.
+- Chỉ gọi HTTP vào hệ thống cũ:
+  - các endpoint đọc: `GET /api/health`, `GET /api/kb`,
+    `GET /api/chat/patients`, `GET /api/chat/status`,
+    `GET /api/records/{patient_id}`;
+  - `POST /api/assess` (stateless — không ghi dữ liệu bệnh nhân).
+- Disclaimer nằm trong `mcp_copilot/prompts.py`, được **code** chèn vào mọi phản hồi.
+  LLM không nhận và không thể sửa disclaimer.
+- LLM chỉ diễn đạt lại bản nháp tất định; lỗi/timeout/JSON sai → fallback tất định.
+- Câu hỏi về thuốc/chẩn đoán bị trả lời tất định (không giao LLM).
+
+### 11.2. Cấu trúc file
+
+```text
+mcp_copilot/
+  __init__.py            # phiên bản package
+  __main__.py            # python -m mcp_copilot
+  config.py              # env vars, timeout, cờ cloud
+  catalog.py             # 10 chỉ số, 8 mode, khoảng tham khảo
+  kb.py                  # đọc knowledge_base.json (read-only)
+  models.py              # dataclass request/response
+  prompts.py             # DISCLAIMER cứng + prompt tiếng Việt
+  safety.py              # lọc chẩn đoán/kê thuốc, urgent flags, disclaimer
+  parser.py              # bóc chỉ số từ câu tự nhiên + đổi đơn vị
+  api_client.py          # HTTP client tới hệ thống cũ
+  llm_client.py          # Ollama/OpenAI/Anthropic + fallback
+  tools.py               # 5 MCP tool + handle_chat
+  server.py              # MCP server stdio/SSE (tùy chọn)
+  webapp.py              # FastAPI bridge cổng 8001
+  static/copilot.html    # UI chat một trang (inline CSS/JS)
+  requirements.txt       # phụ thuộc riêng
+
+scripts/run_copilot.sh   # start/stop/restart/log
+scripts/test_copilot.py  # 40 test offline
+```
+
+### 11.3. Khác biệt so với kế hoạch ban đầu
+
+| Hạng mục | Kế hoạch | Thực tế | Lý do |
+|---|---|---|---|
+| HTTP client | `httpx` | `requests` | Đã có trong requirements gốc; giảm phụ thuộc mới |
+| Model | Pydantic | dataclass | Không cần validate runtime; package nhẹ, dễ test |
+| UI | `src/chat/static/copilot.html` + `http.server` | `mcp_copilot/static/copilot.html` + FastAPI bridge | Giữ `src/` đóng băng; cùng origin, không CORS |
+| Kênh UI → tool | MCP SSE trực tiếp | REST bridge `/api/copilot/*` | Ổn định hơn với browser; MCP vẫn có cho client khác |
+| SSE server | `server_sse.py` riêng | `server.py --transport sse` | SDK đã hỗ trợ; tránh trùng code |
+| JS | `copilot.js` riêng | inline trong HTML | Zero build step, một file dễ deploy |
+| Requirements | sửa `requirements.txt` gốc | `mcp_copilot/requirements.txt` | Không đụng hệ thống đóng băng |
+
+### 11.4. Cách chạy
+
+```bash
+# 1) API hệ thống cũ (cổng 8000)
+./run_api.sh start
+
+# 2) Cài phụ thuộc Copilot (không đụng requirements.txt gốc)
+pip install -r mcp_copilot/requirements.txt
+
+# 3) Web UI + bridge (cổng 8001)
+./scripts/run_copilot.sh start
+# Mở http://127.0.0.1:8001
+
+# 4) MCP server (tùy chọn)
+python -m mcp_copilot                                # stdio
+python -m mcp_copilot --transport sse --port 8765    # SSE
+```
+
+Biến môi trường chính:
+
+| Biến | Mặc định | Ý nghĩa |
+|---|---|---|
+| `COPILOT_API_URL` | `http://127.0.0.1:8000` | API hệ thống cũ |
+| `COPILOT_LLM_PROVIDER` | `auto` | `auto`/`ollama`/`openai`/`anthropic`/`none` |
+| `COPILOT_ALLOW_CLOUD` | `0` | Phải bật rõ ràng mới cho phép cloud |
+| `COPILOT_OLLAMA_URL` | `http://127.0.0.1:11434` | Ollama cục bộ |
+| `COPILOT_OLLAMA_MODEL` | `llama3.1:8b` | Model cục bộ |
+| `COPILOT_PORT` / `COPILOT_HOST` | `8001` / `127.0.0.1` | Địa chỉ web UI |
+| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | — | Chỉ dùng khi bật cloud |
+
+### 11.5. Kiểm thử
+
+- `python3 -m py_compile mcp_copilot/*.py scripts/test_copilot.py` → **OK**
+- `python3 scripts/test_copilot.py` → **40/40 pass** (offline, fake API/LLM)
+- **Smoke test HTTP** với mock API cục bộ (dùng `requests` thật, không fake
+  client): status → load bệnh nhân → thu thập → `POST /api/assess` → giải thích
+  → follow-up đều **OK**.
+- **Chưa chạy được** `uvicorn`/MCP server trong môi trường soạn thảo vì thiếu
+  `fastapi`, `uvicorn`, `mcp` (và `pip`). Cần kiểm thử runtime trên máy đích:
+  1. `pip install -r mcp_copilot/requirements.txt`
+  2. `./run_api.sh start`
+  3. `./scripts/run_copilot.sh start`
+  4. Mở `http://127.0.0.1:8001`, thử một ca đầy đủ và một ca thiếu dữ liệu.
+- UI đã được review thủ công; môi trường soạn thảo không có JS runtime để
+  `node --check`.
+
+### 11.6. Giới hạn đã biết
+
+- Đánh giá một ngày: Tier 1 cần ≥ 7 ngày để có xu hướng; Copilot nêu rõ trong
+  phần "độ đầy đủ dữ liệu".
+- LLM có thể diễn đạt khác nhau; mọi số liệu/luật lấy từ Tier 3, không do LLM bịa.
+- Cloud LLM mặc định tắt; chỉ gửi dữ kiện đã tính, không gửi mã bệnh nhân.
+- Phiên chat lưu trong `localStorage` theo mã bệnh nhân; không có server-side session.
+- SSE transport phụ thuộc phiên bản MCP SDK; nếu không hỗ trợ, dùng stdio.
+
+### 11.7. Việc còn lại trước khi coi là "production"
+
+- [ ] Chạy runtime trên Windows/WSL có đủ phụ thuộc; kiểm tra 3 ca:
+      thiếu dữ liệu, TRUNG_BINH, CAO + SpO2 thấp.
+- [ ] Kiểm tra disclaimer hiển thị đúng trên mobile.
+- [ ] Kiểm tra Ollama local (nếu dùng) và fallback khi tắt Ollama.
+- [ ] Kiểm tra MCP client (Claude Desktop) gọi đủ 5 tool.

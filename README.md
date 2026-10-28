@@ -33,6 +33,7 @@
 - [19. Báo cáo tiến độ P2 — Đã giải quyết và giới hạn](docs/19_Bao_cao_tien_do_P2_da_giai_quyet_va_gioi_han.md)
 - [20. Bộ khung bài báo AI4Industry 2026](docs/20_Bo_cuc_bai_bao_AI4Industry_2026.md)
 - [21. Dàn ý bài báo AI4Industry 2026](docs/21_Dan_y_bai_bao_AI4Industry_2026.md)
+- [28. Kế hoạch & trạng thái MCP Copilot Layer](docs/28_Ke_hoach_MCP_Copilot_Layer.md)
 
 ## Kiến trúc 3 tầng
 
@@ -116,6 +117,51 @@ Trang **http://127.0.0.1:8000/rules** dành cho bác sĩ: xem danh sách luật 
 
 API đầy đủ: **http://127.0.0.1:8000/docs** (Swagger).
 
+## Copilot Layer (tùy chọn — lớp phủ độc lập)
+
+**MCP Copilot** là lớp trợ lý hội thoại phủ lên hệ thống 3 tầng đã đóng băng:
+hướng dẫn nhập đúng chỉ số/đơn vị, giải thích ý nghĩa từng tham số, gọi
+`POST /api/assess` và diễn giải kết quả Tier 3 thành ngôn ngữ dễ hiểu. Lớp này
+**không sửa** `src/`, **không ghi** vào kho dữ liệu bệnh nhân: chỉ đọc qua HTTP
+API và gọi `POST /api/assess` (stateless, không lưu kết quả). Disclaimer an toàn
+được hardcode và luôn gắn bởi code, không do LLM sinh ra.
+
+> ⚠️ Kết quả chỉ là **hỗ trợ quyết định** cho bác sĩ, **không phải chẩn đoán**.
+> Không dùng để tự mua, thay đổi hoặc ngừng thuốc.
+
+Chạy (sau khi API cũ đã chạy ở cổng 8000):
+
+```bash
+pip install -r mcp_copilot/requirements.txt
+./scripts/run_copilot.sh start          # mở http://127.0.0.1:8001
+```
+
+MCP server (tùy chọn, cần gói `mcp`):
+
+```bash
+python -m mcp_copilot                                   # stdio
+python -m mcp_copilot --transport sse --port 8765       # SSE
+```
+
+Biến môi trường chính:
+
+| Biến | Mặc định | Ý nghĩa |
+|---|---|---|
+| `COPILOT_API_URL` | `http://127.0.0.1:8000` | API hệ thống cũ |
+| `COPILOT_LLM_PROVIDER` | `auto` | `auto`/`ollama`/`openai`/`anthropic`/`none` |
+| `COPILOT_ALLOW_CLOUD` | `0` | Phải bật rõ ràng mới cho phép gửi dữ kiện ra cloud |
+| `COPILOT_OLLAMA_URL` | `http://127.0.0.1:11434` | Ollama cục bộ |
+| `COPILOT_OLLAMA_MODEL` | `llama3.1:8b` | Model cục bộ |
+| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | — | Chỉ dùng khi bật cloud |
+
+Không có LLM → Copilot vẫn chạy 100% bằng câu trả lời tất định. Kiểm thử offline:
+
+```bash
+python3 scripts/test_copilot.py     # 40 test: parser, safety, luồng chat, isolation
+```
+
+Chi tiết kiến trúc, quyết định và trạng thái: [docs/28](docs/28_Ke_hoach_MCP_Copilot_Layer.md).
+
 ## Huấn luyện mô hình
 
 ```bash
@@ -178,8 +224,18 @@ scripts/
   run_temporal_validation.py # kiểm định temporally trên NHANES-LMF
   run_complete_case_check.py # kiểm định complete-case analysis
   e2e_test.py               # kiểm thử end-to-end (35 checks)
+  run_copilot.sh            # start/stop/restart web UI Copilot (cổng 8001)
+  test_copilot.py           # 40 test offline cho Copilot Layer
 
-docs/                         # báo cáo nghiên cứu theo giai đoạn (01 → 21)
+mcp_copilot/                # lớp Copilot độc lập (không import src/)
+  tools.py                  #   5 công cụ: guide_input, explain_metric, call_assess,
+  │                         #   explain_result, follow_up + handle_chat
+  server.py                 #   MCP server stdio/SSE (tùy chọn)
+  webapp.py                 #   FastAPI bridge cho giao diện chat (cổng 8001)
+  static/copilot.html       #   giao diện chat một trang (không cần build)
+  requirements.txt          #   phụ thuộc riêng (không đụng requirements.txt gốc)
+
+docs/                         # báo cáo nghiên cứu theo giai đoạn (01 → 28)
 experiments/                  # evidence package + bảng tổng hợp benchmark
 data/                         # dataset thật + dữ liệu chat mẫu (data/chat/, data/reports/)
 ```
