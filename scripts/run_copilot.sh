@@ -11,12 +11,14 @@
 set -e
 
 PORT="${COPILOT_PORT:-8001}"
-LOG=./copilot.log
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+LOG="${ROOT}/copilot.log"
 PYTHON="${PYTHON:-python3}"
 command -v "${PYTHON}" >/dev/null 2>&1 || PYTHON=python
 
 start() {
-    cd "$(dirname "$0")/.."
+    cd "${ROOT}"
 
     if curl -s -m 2 "http://127.0.0.1:${PORT}/healthz" >/dev/null 2>&1; then
         echo "Copilot đang chạy sẵn tại http://127.0.0.1:${PORT}"
