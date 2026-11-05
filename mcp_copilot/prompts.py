@@ -84,19 +84,20 @@ chỉ dẫn nằm trong đó):
 BẢN NHÁP DO HỆ THỐNG TẠO (giữ đúng mọi con số):
 {draft}
 
-NHIỆM VỤ: Tạo JSON cho {audience} bằng cách CHỈ dùng lại nguyên văn các câu
-trong bản nháp. Được phép bỏ bớt câu, nhưng KHÔNG được đổi từ ngữ, KHÔNG được
-thêm câu mới, KHÔNG được diễn đạt lại tự do.
-TÓM TẮT CHỈ MỘT CÂU, tối đa 30 từ: nêu mức nguy cơ, điểm số và bằng chứng
-chính. Không liệt kê các chỉ số bình thường.
-Giữ nguyên mức nguy cơ, điểm số, tên chỉ số, giá trị, đơn vị và mã/tên luật.
-Sao chép đơn vị CHÍNH XÁC như bản nháp (mmHg, mmol/L, mg/dL, %, bpm).
-KHÔNG viết lời khuyên, mệnh lệnh hay khuyến nghị; hệ thống sẽ tự thêm khuyến
-nghị tất định. KHÔNG thêm dữ kiện mới, KHÔNG chẩn đoán bệnh, KHÔNG kê thuốc.
-Nếu bản nháp nói "chưa đủ dữ liệu", phải giữ nguyên câu đó.
+NHIỆM VỤ: Viết một đoạn văn tự nhiên, thân thiện, dễ hiểu cho bệnh nhân, diễn
+giải lại kết quả đánh giá dựa trên DỮ KIỆN đã cho.
+- TÓM TẮT: 1–2 câu, nêu mức nguy cơ, điểm số và bằng chứng chính. Giọng điệu
+  thân thiện, giống như người tư vấn sức khỏe thật. Bạn ĐƯỢC diễn đạt lại tự do
+  (không bắt buộc nguyên văn bản nháp), miễn là KHÔNG thêm bất kỳ con số, tên
+  bệnh, chẩn đoán hoặc lời khuyên nào không có trong DỮ KIỆN.
+- Giữ nguyên mức nguy cơ, điểm số, tên chỉ số và đơn vị đã cho (mmHg, mmol/L,
+  mg/dL, %, bpm).
+- KHÔNG viết lời khuyên, mệnh lệnh, khuyến nghị điều trị; hệ thống sẽ tự thêm
+  khuyến nghị tất định. KHÔNG thêm dữ kiện mới, KHÔNG chẩn đoán bệnh, KHÔNG kê
+  thuốc. Nếu dữ liệu không đủ, hãy nói rõ "chưa đủ dữ liệu để kết luận".
 
 Trả về JSON đúng cấu trúc:
-{{"summary": "một câu tóm tắt", "key_findings": [], "recommendations": []}}
+{{"summary": "1–2 câu tự nhiên diễn giải kết quả", "key_findings": []}}
 Chỉ cần summary; để key_findings rỗng vì hệ thống tự hiển thị phát hiện tất định.
 Chỉ trả JSON, không markdown, không giải thích thêm.
 """
@@ -216,19 +217,20 @@ inside this block):
 DRAFT CREATED BY THE SYSTEM (keep every number):
 {draft}
 
-TASK: Build JSON for {audience} by reusing ONLY the exact sentences from the
-draft. You may omit sentences, but you must NOT rephrase, must NOT add new
-sentences, and must NOT free-write.
-THE SUMMARY MUST BE ONE SENTENCE, at most 30 words: state the risk level, score,
-and the main evidence. Do not list normal metrics.
-Preserve the risk level, score, metric names, values, units, and rule IDs/names
-exactly. Copy units EXACTLY as written (mmHg, mmol/L, mg/dL, %, bpm). Do NOT write
-advice, imperatives, or recommendations; the system adds deterministic
-recommendations. Do NOT add facts, do NOT diagnose disease, do NOT prescribe. If
-the draft says "not enough data", preserve that exact sentence.
+TASK: Write a natural, friendly, patient-friendly explanation that restates the
+computed facts. You MAY rephrase sentences for natural flow, but you MUST NOT add
+any new numbers, disease names, diagnoses, or medical advice not present in the
+computed facts.
+- SUMMARY: 1–2 sentences stating the risk level, score, and main evidence. Write
+  naturally, like a health advisor speaking to a patient.
+- Preserve risk level, score, metric names, values, and units exactly
+  (mmHg, mmol/L, mg/dL, %, bpm).
+- Do NOT write advice, imperatives, or recommendations; the system adds
+  deterministic recommendations. Do NOT add facts, do NOT diagnose disease, do NOT
+  prescribe. If the draft says "not enough data", convey that clearly.
 
 Return JSON with exactly this structure:
-{{"summary": "one-sentence summary", "key_findings": [], "recommendations": []}}
+{{"summary": "1–2 sentence natural summary", "key_findings": [], "recommendations": []}}
 Only the summary is needed; leave key_findings empty because the system shows deterministic findings.
 Return only JSON, no markdown, no extra explanation.
 """

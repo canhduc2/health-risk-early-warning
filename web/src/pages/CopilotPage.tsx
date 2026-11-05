@@ -19,7 +19,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
-import type { AssessmentResult, CopilotExplanation, CopilotStatus, LlmDebug } from "../api/types";
+import type { AssessmentResult, CopilotExplanation, CopilotStatus, LlmDebug, RuleReference } from "../api/types";
 import { Markdown } from "../components/Markdown";
 import { PatientBar } from "../components/PatientBar";
 import { usePatient } from "../components/PatientContext";
@@ -212,6 +212,9 @@ function LlmDebugPanel({ debug, onClear }: { debug: LlmDebug; onClear: () => voi
   const raw = typeof debug.raw === "string" ? debug.raw : "";
   const parsed = debug.parsed === null || debug.parsed === undefined ? "" : JSON.stringify(debug.parsed, null, 2);
   const validation = Array.isArray(debug.validation) ? debug.validation.filter(Boolean) : [];
+  const systemPrompt =
+    typeof debug.system_prompt === "string" ? debug.system_prompt : "";
+  const userPrompt = typeof debug.user_prompt === "string" ? debug.user_prompt : "";
   const copyRaw = async () => {
     try {
       await navigator.clipboard.writeText(raw || parsed);
@@ -260,6 +263,18 @@ function LlmDebugPanel({ debug, onClear }: { debug: LlmDebug; onClear: () => voi
         <div className="debug-block">
           <div className="field__label">{t("copilot.debugParsed")}</div>
           <pre>{parsed}</pre>
+        </div>
+      ) : null}
+      {systemPrompt ? (
+        <div className="debug-block">
+          <div className="field__label">{t("copilot.debugSystemPrompt")}</div>
+          <pre>{systemPrompt}</pre>
+        </div>
+      ) : null}
+      {userPrompt ? (
+        <div className="debug-block">
+          <div className="field__label">{t("copilot.debugUserPrompt")}</div>
+          <pre>{userPrompt}</pre>
         </div>
       ) : null}
     </section>

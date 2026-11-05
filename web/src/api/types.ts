@@ -161,11 +161,29 @@ export interface LlmDebug {
   provider?: string;
   model?: string;
   method?: string;
+  system_prompt?: string | null;
+  user_prompt?: string | null;
   [key: string]: unknown;
+}
+
+export interface RuleReference {
+  rule_id?: string;
+  rule_name?: string;
+  system?: string;
+  system_label?: string;
+  severity?: number;
+  source_url?: string | null;
+  source_page?: string | null;
+  source_section?: string | null;
+  source_excerpt?: string | null;
 }
 
 export interface CopilotExplanation {
   summary?: string;
+  summary_deterministic?: string;
+  summary_llm?: string | null;
+  method?: string;
+  method_llm?: string | null;
   risk_level?: string;
   risk_level_vi?: string;
   risk_score?: number | null;
@@ -175,7 +193,7 @@ export interface CopilotExplanation {
   data_sufficiency_note?: string;
   urgent?: string[];
   disclaimer?: string;
-  method?: string;
+  rule_references?: RuleReference[];
   llm_debug?: LlmDebug | null;
   [key: string]: unknown;
 }

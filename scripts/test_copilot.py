@@ -454,14 +454,24 @@ class TestSafety(unittest.TestCase):
         self.assertFalse(ok)
         self.assertEqual(reason, "medical_advice")
 
-    def test_strict_filter_accepts_grounded_advice_verbatim(self):
-        context = "You should discuss this with your doctor."
+    def test_strict_filter_rejects_llm_advice_always(self):
+        # LLM không được viết khuyến nghị/lời khuyên, dù câu đó đã có trong
+        # context (khuyến nghị được sinh ra tất định, không phải LLM).
         ok, reason = validate_llm_output(
             "You should discuss this with your doctor.",
             lang="en",
-            allowed_text=context,
+            allowed_text="You should discuss this with your doctor.",
         )
-        self.assertTrue(ok, reason)
+        self.assertFalse(ok)
+        self.assertEqual(reason, "medical_advice")
+
+        ok, reason = validate_llm_output(
+            "Bạn nên trao đổi với bác sĩ về kết quả này.",
+            lang="vi",
+            allowed_text="Bạn nên trao đổi với bác sĩ về kết quả này.",
+        )
+        self.assertFalse(ok)
+        self.assertEqual(reason, "medical_advice")
 
 
 class TestTools(unittest.TestCase):

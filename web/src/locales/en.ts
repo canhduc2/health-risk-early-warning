@@ -313,6 +313,8 @@ const en = {
     debugCopied: "Raw output copied.",
     debugEmpty: "No output yet. Run an assessment or send a question with debug enabled.",
     moreDetails: "More details",
+    debugSystemPrompt: "System prompt",
+    debugUserPrompt: "User prompt",
     detailTitle: "Reply details",
     detailSource: "Source",
     detailHandler: "Handler",
@@ -324,6 +326,9 @@ const en = {
     detailShow: "View details",
     detailHide: "Hide details",
     basedOn: "Based on",
+    deterministicLabel: "Deterministic",
+    llmLabel: "LLM",
+    ruleReferences: "Rule references",
   },
   knowledge: {
     title: "Knowledge base",

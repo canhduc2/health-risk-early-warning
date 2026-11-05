@@ -71,18 +71,40 @@ class AssessOutcome:
 
 
 @dataclass
+class RuleReference:
+    """Tham chiếu nguồn dẫn dẫn của một luật lâm sạch đã kích hoạt."""
+    rule_id: str
+    rule_name: str
+    system: str
+    system_label: str
+    severity: float
+    source_url: str | None = None
+    source_page: str | None = None
+    source_section: str | None = None
+    source_excerpt: str | None = None
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass
 class NaturalExplanation:
-    summary: str
-    risk_level: str
-    risk_level_vi: str
-    risk_score: float | None
-    affected_systems: list[str]
-    key_findings: list[str]
-    recommendations: list[str]
-    data_sufficiency_note: str
-    urgent: list[str]
-    disclaimer: str
-    method: str = "deterministic"
+    summary: str                      # Bản hiển thị chính (LLM nếu được chấp nhận, ngược lại tất định)
+    summary_deterministic: str        # Bản tất định (luôn có)
+    summary_llm: str | None = None    # Bản LLM (nếu LLM được dùng và vượt kiểm duyệt)
+    method: str = "deterministic"     # Phương pháp tổng thể
+    method_llm: str | None = None     # Phương pháp của bản LLM ("llm_assisted" hoặc None)
+    risk_level: str = ""
+    risk_level_vi: str = ""
+    risk_score: float | None = None
+    affected_systems: list[str] = field(default_factory=list)
+    key_findings: list[str] = field(default_factory=list)
+    recommendations: list[str] = field(default_factory=list)
+    data_sufficiency_note: str = ""
+    urgent: list[str] = field(default_factory=list)
+    disclaimer: str = ""
+    rule_references: list[RuleReference] = field(default_factory=list)
+    llm_debug: dict[str, Any] | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -100,6 +122,8 @@ class ChatResponse:
     disclaimer: str = ""
     suggestions: list[str] = field(default_factory=list)
     state: dict[str, Any] = field(default_factory=dict)
+    method: str = "deterministic"
+    llm_debug: dict[str, Any] | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -113,6 +137,8 @@ class ChatResponse:
             "disclaimer": self.disclaimer,
             "suggestions": self.suggestions,
             "state": self.state,
+            "method": self.method,
+            "llm_debug": self.llm_debug,
         }
 
 
@@ -122,6 +148,7 @@ class FollowUpResponse:
     suggestions: list[str] = field(default_factory=list)
     method: str = "deterministic"
     disclaimer: str = ""
+    llm_debug: dict[str, Any] | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)

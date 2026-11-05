@@ -49,6 +49,7 @@ from mcp_copilot.models import (
     MetricExplanation,
     NaturalExplanation,
     PatientContext,
+    RuleReference,
 )
 from mcp_copilot.parser import (
     detect_metric_question,
@@ -140,6 +141,8 @@ def _llm_debug_payload(
     latency_ms: float,
     method: str,
     validation: list[str] | None = None,
+    system_prompt: str | None = None,
+    user_prompt: str | None = None,
 ) -> dict[str, Any]:
     """Audit-only payload. Never used to build the clinical answer."""
     status = llm.status() if llm is not None else {}
@@ -154,6 +157,8 @@ def _llm_debug_payload(
         "provider": status.get("provider"),
         "model": status.get("model"),
         "method": method,
+        "system_prompt": system_prompt,
+        "user_prompt": user_prompt,
     }
 
 
@@ -770,6 +775,9 @@ class CopilotTools:
         summary_heading = "Key findings:" if en else "Phát hiện chính:"
         summary_prefix = "Summary:" if en else "Tóm tắt:"
         summary = draft.split(summary_heading)[0].replace(summary_prefix, "").strip()
+        summary_deterministic = summary
+        summary_llm: str | None = None
+        method_llm: str | None = None
         method = "deterministic"
         context_json = json.dumps(context, ensure_ascii=False)
         llm_context_json = json.dumps(
@@ -833,6 +841,8 @@ class CopilotTools:
                     debug_validation = [reason for _ok, reason in checks]
                     if all(ok for ok, _reason in checks):
                         summary = summary_candidate
+                        summary_llm = summary_candidate
+                        method_llm = "llm_assisted"
                         if findings_candidate:
                             findings = findings_candidate
                         method = "llm_assisted"
@@ -883,8 +893,30 @@ class CopilotTools:
             ) + list(assessment.get("urgent_flags") or [])
         ))
 
+        # Build rule references from context evidence (source_url, page, section, excerpt)
+        rule_refs: list[RuleReference] = []
+        for ev in (context.get("evidence") or []):
+            if isinstance(ev, dict) and ev.get("rule_id"):
+                rule_refs.append(
+                    RuleReference(
+                        rule_id=str(ev.get("rule_id", "")),
+                        rule_name=str(ev.get("rule", "")),
+                        system=str(ev.get("system", "")),
+                        system_label=str(ev.get("system_label", "")),
+                        severity=float(ev.get("severity") or 0.0),
+                        source_url=ev.get("source_url") or None,
+                        source_page=ev.get("source_page") or None,
+                        source_section=ev.get("source_section") or None,
+                        source_excerpt=ev.get("source_excerpt") or None,
+                    )
+                )
+
         return NaturalExplanation(
             summary=summary,
+            summary_deterministic=summary_deterministic,
+            summary_llm=summary_llm,
+            method=method,
+            method_llm=method_llm,
             risk_level=risk_level,
             risk_level_vi=level_label(risk_level, language),
             risk_score=score,
@@ -896,7 +928,7 @@ class CopilotTools:
             data_sufficiency_note=str(sufficiency.get("note") or ""),
             urgent=flags,
             disclaimer=localized_disclaimer(language),
-            method=method,
+            rule_references=rule_refs,
             llm_debug=(
                 _llm_debug_payload(
                     self.llm,
@@ -908,6 +940,8 @@ class CopilotTools:
                     latency_ms=debug_latency_ms,
                     method=method,
                     validation=debug_validation,
+                    system_prompt=prompts["safety"],
+                    user_prompt=prompt,
                 )
                 if debug_llm
                 else None
@@ -1031,6 +1065,8 @@ class CopilotTools:
                     latency_ms=debug_latency_ms,
                     method=method,
                     validation=debug_validation,
+                    system_prompt=prompts["safety"],
+                    user_prompt=prompt,
                 )
                 if debug_llm
                 else None
@@ -1335,6 +1371,8 @@ class CopilotTools:
                     latency_ms=debug_latency_ms,
                     method=method,
                     validation=debug_validation,
+                    system_prompt=prompts["safety"],
+                    user_prompt=prompt,
                 )
                 if debug_llm
                 else None

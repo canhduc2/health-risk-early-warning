@@ -316,6 +316,8 @@ const vi: Messages = {
     debugEmpty: "Chưa có output. Chạy đánh giá hoặc gửi câu hỏi khi bật debug.",
     moreDetails: "Chi tiết thêm",
     detailTitle: "Chi tiết phản hồi",
+    debugSystemPrompt: "Prompt hệ thống (system prompt)",
+    debugUserPrompt: "Prompt người dùng (user prompt)",
     detailSource: "Nguồn xử lý",
     detailHandler: "Hàm xử lý",
     detailMethod: "Phương pháp",
@@ -326,6 +328,9 @@ const vi: Messages = {
     detailShow: "Xem chi tiết",
     detailHide: "Ẩn chi tiết",
     basedOn: "Dựa trên",
+    deterministicLabel: "Tất định",
+    llmLabel: "LLM",
+    ruleReferences: "Nguồn dẫn luật lâm sạch",
   },
   knowledge: {
     title: "Cơ sở tri thức",
