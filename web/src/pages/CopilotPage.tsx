@@ -155,34 +155,36 @@ function ExplanationView({ explanation }: { explanation: CopilotExplanation }) {
         <div className="stack-sm" style={{ alignItems: "flex-end" }}>
           {explanation.risk_level ? <RiskBadge level={explanation.risk_level} /> : null}
           <span className={`badge ${isLlm ? "badge--llm" : "badge--det"}`} title={isLlm ? t("copilot.llmRole") : t("copilot.deterministicRole")}>
-            {isLlm ? `${t("copilot.llmLabel")} · ${explanation.method_llm || t("copilot.llm")}` : `${t("copilot.deterministicLabel")} · ${t("copilot.deterministic")}`}
+            {isLlm ? `${t("copilot.llmLabel")} · ${explanation.method_llm || t("copilot.llm")}` : t("copilot.deterministicLabel")}
           </span>
         </div>
       </div>
 
-      {/* Dual summary display: deterministic + LLM side by side */}
-      <div className="summary-dual" style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-        <div className="summary-version" style={{ padding: 10, borderRadius: 8, border: `1px solid ${isLlm ? "var(--info)" : "var(--success)"}`, background: isLlm ? "color-mix(in srgb, var(--info) 6%, transparent)" : "color-mix(in srgb, var(--success) 6%, transparent)" }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
-            <span style={{ fontWeight: 700, fontSize: 12, color: isLlm ? "var(--info)" : "var(--success)" }}>
-              {isLlm ? "🤖 " : "🖥️ "}
-            </span>
-            <span style={{ fontWeight: 700, fontSize: 12 }}>{isLlm ? t("copilot.llmLabel") : t("copilot.deterministicLabel")}</span>
-            <span className="small muted">{isLlm ? t("copilot.llmRole") : t("copilot.deterministicRole")}</span>
-          </div>
-          <div style={{ fontSize: 13, lineHeight: 1.6 }}>{summaryLlm}</div>
-        </div>
-        {summaryDet && summaryDet !== summaryLlm && (
-          <div className="summary-version" style={{ padding: 10, borderRadius: 8, border: "1px dashed var(--border)", background: "var(--bg-soft)" }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
-              <span style={{ fontWeight: 700, fontSize: 12, color: "var(--success)" }}>🖥️ </span>
-              <span style={{ fontWeight: 700, fontSize: 12 }}>{t("copilot.deterministicLabel")}</span>
-              <span className="small muted">{t("copilot.deterministicRole")}</span>
+      {/* Dual summary display: deterministic + LLM stacked with clear separation */}
+      {summaryLlm || summaryDet ? (
+        <div className="summary-dual" style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+          <div className="summary-version" style={{ padding: 12, borderRadius: 8, border: `1px solid ${isLlm ? "var(--info)" : "var(--success)"}`, background: isLlm ? "color-mix(in srgb, var(--info) 8%, transparent)" : "color-mix(in srgb, var(--success) 8%, transparent)" }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
+              <span style={{ fontWeight: 700, fontSize: 12, color: isLlm ? "var(--info)" : "var(--success)" }}>
+                {isLlm ? "🤖" : "🖥️"}
+              </span>
+              <span style={{ fontWeight: 700, fontSize: 12 }}>{isLlm ? t("copilot.llmLabel") : t("copilot.deterministicLabel")}</span>
+              <span className="small muted">{isLlm ? t("copilot.llmRole") : t("copilot.deterministicRole")}</span>
             </div>
-            <div style={{ fontSize: 13, lineHeight: 1.6 }}>{summaryDet}</div>
+            <div style={{ fontSize: 13, lineHeight: 1.7 }}>{summaryLlm || summaryDet}</div>
           </div>
-        )}
-      </div>
+          {summaryDet && summaryDet !== summaryLlm && (
+            <div className="summary-version" style={{ padding: 12, borderRadius: 8, border: "1px dashed var(--border)", background: "var(--bg-soft)" }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontWeight: 700, fontSize: 12, color: "var(--success)" }}>🖥️</span>
+                <span style={{ fontWeight: 700, fontSize: 12 }}>{t("copilot.deterministicLabel")}</span>
+                <span className="small muted">{t("copilot.deterministicRole")}</span>
+              </div>
+              <div style={{ fontSize: 13, lineHeight: 1.7 }}>{summaryDet}</div>
+            </div>
+          )}
+        </div>
+      ) : null}
 
       {explanation.urgent?.length ? (
         <Alert variant="danger">

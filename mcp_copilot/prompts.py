@@ -86,10 +86,13 @@ BẢN NHÁP DO HỆ THỐNG TẠO (giữ đúng mọi con số):
 
 NHIỆM VỤ: Viết một đoạn văn tự nhiên, thân thiện, dễ hiểu cho bệnh nhân, diễn
 giải lại kết quả đánh giá dựa trên DỮ KIỆN đã cho.
-- TÓM TẮT: 1–2 câu, nêu mức nguy cơ, điểm số và bằng chứng chính. Giọng điệu
+- TÓM TẮT: 2–4 câu, nêu mức nguy cơ, điểm số và bằng chứng chính. Giọng điệu
   thân thiện, giống như người tư vấn sức khỏe thật. Bạn ĐƯỢC diễn đạt lại tự do
   (không bắt buộc nguyên văn bản nháp), miễn là KHÔNG thêm bất kỳ con số, tên
   bệnh, chẩn đoán hoặc lời khuyên nào không có trong DỮ KIỆN.
+- Giải thích rõ hơn: nêu các chỉ số bất thường (nếu có), ý nghĩa của chúng, và
+  điều bệnh nhân nên theo dõi (không phải lời khuyên điều trị, chỉ là thông
+  tin tham khảo).
 - Giữ nguyên mức nguy cơ, điểm số, tên chỉ số và đơn vị đã cho (mmHg, mmol/L,
   mg/dL, %, bpm).
 - KHÔNG viết lời khuyên, mệnh lệnh, khuyến nghị điều trị; hệ thống sẽ tự thêm
@@ -221,8 +224,10 @@ TASK: Write a natural, friendly, patient-friendly explanation that restates the
 computed facts. You MAY rephrase sentences for natural flow, but you MUST NOT add
 any new numbers, disease names, diagnoses, or medical advice not present in the
 computed facts.
-- SUMMARY: 1–2 sentences stating the risk level, score, and main evidence. Write
+- SUMMARY: 2–4 sentences stating the risk level, score, and main evidence. Write
   naturally, like a health advisor speaking to a patient.
+- Explain more: mention any abnormal metrics (if present), what they mean, and
+  what the patient should monitor (not treatment advice, just informational).
 - Preserve risk level, score, metric names, values, and units exactly
   (mmHg, mmol/L, mg/dL, %, bpm).
 - Do NOT write advice, imperatives, or recommendations; the system adds

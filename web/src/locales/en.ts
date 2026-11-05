@@ -212,6 +212,11 @@ const en = {
     generatedAt: "Generated at",
     noMl: "No model comparison was returned.",
     scoreNote: "Scores are decision-support signals, not probabilities of disease.",
+    window: "Window (days)",
+    window10: "10 days",
+    window30: "30 days",
+    window60: "60 days",
+    windowAll: "All days",
   },
   chat: {
     title: "Health journal",

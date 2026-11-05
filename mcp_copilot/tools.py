@@ -807,8 +807,8 @@ class CopilotTools:
             debug_attempted = True
             started = time.perf_counter()
             reply = self.llm.chat(
-                prompts["safety"], prompt, temperature=0.2,
-                max_tokens=80, json_mode=True,
+                prompts["safety"], prompt, temperature=0.3,
+                max_tokens=150, json_mode=True,
             )
             debug_latency_ms = (time.perf_counter() - started) * 1000
             debug_raw = reply

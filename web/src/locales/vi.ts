@@ -214,6 +214,11 @@ const vi: Messages = {
     generatedAt: "Tạo lúc",
     noMl: "Không có dữ liệu so sánh mô hình.",
     scoreNote: "Điểm chỉ là tín hiệu hỗ trợ quyết định, không phải xác suất mắc bệnh.",
+    window: "Cửa sổ (ngày)",
+    window10: "10 ngày",
+    window30: "30 ngày",
+    window60: "60 ngày",
+    windowAll: "Tất cả",
   },
   chat: {
     title: "Nhật ký sức khỏe",
