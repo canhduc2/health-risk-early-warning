@@ -5,11 +5,11 @@ import {
   Check,
   CheckCircle2,
   CircleHelp,
+  ArrowUp,
   ClipboardCheck,
   Copy,
   Paperclip,
   RotateCcw,
-  Send,
   ShieldCheck,
   Sparkles,
   Stethoscope,
@@ -893,7 +893,7 @@ export function CopilotPage() {
                 }}
               />
               <button type="button" className="btn-send" onClick={() => void sendChat()} disabled={chatBusy || !chatDraft.trim()} title="Gửi">
-                {chatBusy ? <span className="spinner" /> : <Send size={14} />}
+                {chatBusy ? <span className="spinner" /> : <ArrowUp size={14} />}
               </button>
             </div>
             {chatMode === "journal" ? (
