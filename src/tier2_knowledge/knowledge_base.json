@@ -125,8 +125,10 @@
       "created_by": "legacy",
       "approved_by": null,
       "approved_at": null,
-      "updated_at": null,
-      "previous_version": null
+      "updated_at": "2026-11-05T04:16:46+00:00",
+      "previous_version": null,
+      "previous_status": "draft",
+      "updated_by": "web-user"
     },
     {
       "rule_id": "R_CV_02",
@@ -154,10 +156,12 @@
       "status": "active",
       "rule_version": 1.0,
       "created_by": "legacy",
-      "approved_by": null,
-      "approved_at": null,
-      "updated_at": null,
-      "previous_version": null
+      "approved_by": "web-user",
+      "approved_at": "2026-11-05T04:16:53+00:00",
+      "updated_at": "2026-11-05T04:16:55+00:00",
+      "previous_version": null,
+      "previous_status": "draft",
+      "updated_by": "web-user"
     },
     {
       "rule_id": "R_CV_03",
@@ -185,8 +189,10 @@
       "created_by": "legacy",
       "approved_by": null,
       "approved_at": null,
-      "updated_at": null,
-      "previous_version": null
+      "updated_at": "2026-11-05T04:16:48+00:00",
+      "previous_version": null,
+      "previous_status": "draft",
+      "updated_by": "web-user"
     },
     {
       "rule_id": "R_END_01",
@@ -219,8 +225,10 @@
       "created_by": "legacy",
       "approved_by": null,
       "approved_at": null,
-      "updated_at": null,
-      "previous_version": null
+      "updated_at": "2026-11-05T04:16:58+00:00",
+      "previous_version": null,
+      "previous_status": "draft",
+      "updated_by": "web-user"
     },
     {
       "rule_id": "R_END_02",
@@ -248,8 +256,10 @@
       "created_by": "legacy",
       "approved_by": null,
       "approved_at": null,
-      "updated_at": null,
-      "previous_version": null
+      "updated_at": "2026-11-05T04:17:01+00:00",
+      "previous_version": null,
+      "previous_status": "draft",
+      "updated_by": "web-user"
     },
     {
       "rule_id": "R_KID_01",
@@ -278,8 +288,10 @@
       "created_by": "legacy",
       "approved_by": null,
       "approved_at": null,
-      "updated_at": null,
-      "previous_version": null
+      "updated_at": "2026-11-05T04:17:15+00:00",
+      "previous_version": null,
+      "previous_status": "draft",
+      "updated_by": "web-user"
     },
     {
       "rule_id": "R_KID_02",
@@ -307,8 +319,10 @@
       "created_by": "legacy",
       "approved_by": null,
       "approved_at": null,
-      "updated_at": null,
-      "previous_version": null
+      "updated_at": "2026-11-05T04:17:04+00:00",
+      "previous_version": null,
+      "previous_status": "draft",
+      "updated_by": "web-user"
     },
     {
       "rule_id": "R_RES_01",
@@ -336,8 +350,10 @@
       "created_by": "legacy",
       "approved_by": null,
       "approved_at": null,
-      "updated_at": null,
-      "previous_version": null
+      "updated_at": "2026-11-05T04:17:11+00:00",
+      "previous_version": null,
+      "previous_status": "draft",
+      "updated_by": "web-user"
     },
     {
       "rule_id": "R_MET_01",
@@ -365,8 +381,10 @@
       "created_by": "legacy",
       "approved_by": null,
       "approved_at": null,
-      "updated_at": null,
-      "previous_version": null
+      "updated_at": "2026-11-05T04:16:50+00:00",
+      "previous_version": null,
+      "previous_status": "draft",
+      "updated_by": "web-user"
     }
   ],
   "system_labels": {
