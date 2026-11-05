@@ -1,5 +1,7 @@
 # 28. Kế hoạch triển khai MCP Copilot Layer (Independent Overlay)
 
+> **Cập nhật giao diện:** UI chính hiện là SPA React + BFF Node trong `web/`. Trang `/copilot` hợp nhất Copilot và Nhật ký sức khỏe thành một luồng hội thoại với hai chế độ **Tư vấn** / **Ghi nhật ký**; `/chat` chuyển hướng về `/copilot`. Chế độ Tư vấn đọc hồ sơ bệnh nhân qua API lõi và trả lời câu hỏi tình trạng bằng dữ kiện tất định.
+
 > **Nguyên tắc cốt lõi**: Hệ thống 3 tầng hiện tại (Tier 1/2/3) **FREEZE hoàn toàn** — không sửa code, không đổi config, không đổi schema. Copilot layer là một **overlay độc lập** chỉ đọc API hiện có và cung cấp giao diện chat hướng dẫn người dùng.
 
 ---
@@ -37,7 +39,7 @@
               ▼                             ▼
 ┌─────────────────────────┐   ┌─────────────────────────┐
 │  LOCAL LLM (Ollama)     │   │  CLOUD LLM (API)        │
-│  - llama3.1:8b          │   │  - OpenAI gpt-4o-mini   │
+│  - qwen3:8b          │   │  - OpenAI gpt-4o-mini   │
 │  - meditron:7b          │   │  - Anthropic Claude     │
 │  - biomistral:7b        │   │  - (configurable)       │
 └─────────────────────────┘   └─────────────────────────┘
@@ -222,7 +224,7 @@ class CopilotConfig:
     # LLM Provider
     llm_provider: str = "ollama"  # "ollama" | "openai" | "anthropic"
     ollama_host: str = "http://localhost:11434"
-    ollama_model: str = "llama3.1:8b"
+    ollama_model: str = "qwen3:8b"
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
     
@@ -457,7 +459,7 @@ mcp_copilot/
   requirements.txt       # phụ thuộc riêng
 
 scripts/run_copilot.sh   # start/stop/restart/log
-scripts/test_copilot.py  # 40 test offline
+scripts/test_copilot.py  # 47 test offline
 ```
 
 ### 11.3. Khác biệt so với kế hoạch ban đầu
@@ -497,15 +499,16 @@ Biến môi trường chính:
 | `COPILOT_API_URL` | `http://127.0.0.1:8000` | API hệ thống cũ |
 | `COPILOT_LLM_PROVIDER` | `auto` | `auto`/`ollama`/`openai`/`anthropic`/`none` |
 | `COPILOT_ALLOW_CLOUD` | `0` | Phải bật rõ ràng mới cho phép cloud |
-| `COPILOT_OLLAMA_URL` | `http://127.0.0.1:11434` | Ollama cục bộ |
-| `COPILOT_OLLAMA_MODEL` | `llama3.1:8b` | Model cục bộ |
+| `COPILOT_OLLAMA_URL` | `http://127.0.0.1:11434` | Ollama cục bộ (WSL: dùng IP gateway Windows) |
+| `COPILOT_OLLAMA_MODEL` | `qwen3:8b` | Model cục bộ, Q4_K_M |
+| `COPILOT_OLLAMA_CONTEXT` | `32768` | Cửa sổ ngữ cảnh gửi kèm mỗi request |
 | `COPILOT_PORT` / `COPILOT_HOST` | `8001` / `127.0.0.1` | Địa chỉ web UI |
 | `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | — | Chỉ dùng khi bật cloud |
 
 ### 11.5. Kiểm thử
 
 - `python3 -m py_compile mcp_copilot/*.py scripts/test_copilot.py` → **OK**
-- `python3 scripts/test_copilot.py` → **40/40 pass** (offline, fake API/LLM)
+- `python3 scripts/test_copilot.py` → **66/66 pass** (offline, fake API/LLM)
 - **Smoke test HTTP** với mock API cục bộ (dùng `requests` thật, không fake
   client): status → load bệnh nhân → thu thập → `POST /api/assess` → giải thích
   → follow-up đều **OK**.

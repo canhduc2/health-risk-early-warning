@@ -73,47 +73,108 @@ pip install -r requirements.txt
 ## Vận hành
 
 ```bash
-./run_api.sh start        # khởi động API + hộp thoại chat (http://127.0.0.1:8000)
+./run_api.sh start        # Python AI core + API (http://127.0.0.1:8000)
+./scripts/run_copilot.sh start   # Copilot bridge (http://127.0.0.1:8001)
 python -m src.main --input <file.csv> --output report/
 ```
 
+## Giao diện web mới (Vite + React + Node BFF)
+
+Lớp web được tách thành SPA React và BFF Node, trong khi Python vẫn là lõi AI
+duy nhất (không chuyển logic lâm sàng sang JavaScript):
+
+```bash
+cd web
+cp .env.example .env       # cấu hình cổng, URL core/Copilot/Ollama
+npm install
+npm run dev                # Vite :5173, proxy /api sang BFF :3000
+# hoặc production:
+npm run build
+npm start                  # BFF :3000, phục vụ dist/ và proxy /api
+```
+
+- Icon dùng `lucide-react`; không dùng emoji/character icon trong UI.
+- Song ngữ EN/VI qua `react-i18next`; API Python nhận `lang=vi|en`.
+- Copilot chỉ diễn đạt lại dữ kiện do tool cung cấp. Output LLM được kiểm tra
+  tất định; nếu có chẩn đoán, dự đoán bệnh, lời khuyên thuốc, tên bệnh hoặc số
+  liệu không có trong context thì **bỏ toàn bộ output LLM** và dùng câu trả lời
+  tất định. Disclaimer cứng luôn được gắn bởi code.
+- Trang `/copilot` hợp nhất **Copilot** và **Nhật ký sức khỏe** vào một luồng
+  hội thoại, có nút chuyển **Tư vấn / Ghi nhật ký**. `/chat` tự chuyển hướng về
+  `/copilot`; không còn hai trang chat trùng nhau.
+- Câu hỏi kiểu “tình trạng hiện tại của bệnh nhân như nào?” hoặc
+  “what is the current status?” được trả lời tất định từ hồ sơ đang chọn
+  (`/api/chat/status` + `/api/records/{id}`), không bị coi là nhập chỉ số.
+  Chỉ số còn thiếu trong form được điền từ lần đo mới nhất của hồ sơ.
+- Dữ liệu demo: `.venv/bin/python scripts/seed_demo_patients.py`. Bộ seed không
+  ghi đè hồ sơ đã có; P001 được làm giàu đủ 10 chỉ số trong 120 ngày để mọi
+  biểu đồ và bảng đều có dữ liệu.
+- BFF giữ nguyên đường dẫn Python: `/api/core/*` → `/api/*` và
+  `/api/copilot/*` → `/api/copilot/*`. Khi sửa proxy, không bỏ phần rewrite này.
+
+## Mô hình cục bộ (Ollama)
+
+Cấu hình mặc định: **`qwen3:8b`** (Q4_K_M, ~5.2 GB, context 32.768 token),
+lưu tại `D:\ollama\models` để tránh đầy ổ `C:`. Trên phần cứng hiện tại
+(CPU + iGPU, không có NVIDIA GPU), `qwen3:8b` đạt khoảng 7.8 token/giây, phù
+hợp cho phản hồi Copilot trong khoảng 20–30 giây. `qwen3:14b` cho chất lượng
+cao hơn nhưng chỉ khoảng 4.1 token/giây, nên chỉ dùng khi ưu tiên chất lượng
+hơn độ trễ. Trên Windows:
+
+```powershell
+setx OLLAMA_MODELS "D:\ollama\models"
+setx OLLAMA_CONTEXT_LENGTH 32768
+setx OLLAMA_KV_CACHE_TYPE q8_0
+setx OLLAMA_NUM_PARALLEL 1
+ollama pull qwen3:8b
+```
+
+Nếu chạy Python/Node trong WSL còn Ollama chạy trên Windows, đặt
+`OLLAMA_URL` và `COPILOT_OLLAMA_URL` bằng IP gateway WSL
+(ví dụ `http://172.30.16.1:11434`). Nếu cần chất lượng cao hơn và chấp nhận
+độ trễ, có thể đổi sang `qwen3:14b` — cùng context 32k nhưng chậm hơn; đổi
+`OLLAMA_MODEL`/`COPILOT_OLLAMA_MODEL` tương ứng.
+
 ## Giao diện & cách dùng ứng dụng
 
-Sau khi chạy `./run_api.sh start`, mở trình duyệt tại **http://127.0.0.1:8000/chat**.
-
-| Hộp thoại chat | Kết quả đánh giá |
-|---|---|
-| ![Giao diện chat](docs/screenshots/giao_dien_chat.png) | ![Kết quả đánh giá](docs/screenshots/ket_qua_danh_gia.png) |
+Sau khi chạy API lõi, Copilot bridge và BFF web, mở
+**http://127.0.0.1:3000/copilot** (hoặc `/` cho trang đánh giá nguy cơ).
 
 **Cách dùng:**
 
-1. Chọn hoặc nhập **mã bệnh nhân** ở góc trên (thanh xổ liệt kê các mã đã có dữ liệu trong `data/chat/`).
-2. Nhập nhật ký sức khỏe hàng ngày — mỗi ngày một dòng, ví dụ:
-   - `Huyết áp 135/85, nhịp tim 80`
-   - `Đường huyết lúc đói 6.9, cân nặng 77`
-   - Hoặc **đính kèm file PDF/DOCX** báo cáo khám — bằng nút 📎, **kéo-thả file**
-     vào bất kỳ đâu trên trang, hoặc **dán (Ctrl+V)** file.
-3. (Tùy chọn) Bật ô **"Ngày đo"** dưới khung nhập để **gán ngày cho lần ghi nhận**
-   — hữu ích khi nhập lại nhật ký cũ hoặc nộp báo cáo khám nhiều ngày trước.
-   Bỏ chọn → hệ thống dùng ngày hôm nay (hoặc ngày ghi trong tin nhắn).
-4. Dữ liệu được tích lũy theo bệnh nhân; khi đủ 7 ngày đo, hệ thống đưa ra **báo cáo nguy cơ cá nhân hóa**.
-5. Lệnh điều khiển: `trạng thái` (tình trạng hiện tại), `báo cáo` (đánh giá đầy đủ), `xóa dữ liệu` (reset bệnh nhân).
+1. Chọn **mã bệnh nhân** ở thanh trên. Danh sách lấy từ dữ liệu đã có trong
+   `data/chat/`; nút **Mới** tạo hồ sơ mới.
+2. Trang **Đánh giá nguy cơ** (`/`) hiển thị bảng 10 chỉ số (phân trang 10 dòng),
+   biểu đồ tương tác có tooltip, và kết quả đánh giá. Cột chỉ số vẫn hiển thị dù
+   bệnh nhân chưa có giá trị.
+3. Trang **Copilot & Nhật ký** (`/copilot`) dùng chung một luồng hội thoại:
+   - **Tư vấn**: hỏi về kết quả, bằng chứng, mức nguy cơ, hoặc tình trạng hồ sơ
+     bệnh nhân. Copilot trả lời từ dữ kiện tool và giữ đồng bộ với bệnh nhân
+     đang chọn.
+   - **Ghi nhật ký**: nhập chỉ số hàng ngày hoặc đính kèm PDF/DOCX/TXT. Có thể
+     bật **Ngày đo** để gán ngày cho lần ghi; dữ liệu được lưu vào hồ sơ.
+4. Sau khi đủ 7 ngày đo, bấm **Đánh giá & diễn giải** để xem mức nguy cơ, hệ cơ
+   quan cần theo dõi, luật lâm sàng và bằng chứng.
+5. Lệnh trong chế độ **Ghi nhật ký**: `trạng thái` (tình trạng hiện tại),
+   `báo cáo` (đánh giá đầy đủ), `xóa dữ liệu` (reset bệnh nhân).
 
 Kết quả đánh giá trình bày gọn: **mức rủi ro** (tiếng Việt: THẤP / TRUNG BÌNH /
 CAO), **hệ cơ quan cần kiểm tra**, **cảnh báo theo luật lâm sàng** (mỗi luật kèm
 link nguồn hướng dẫn gốc, số trang/chương/trích đoạn nếu có) và **chỉ số theo
 dõi** (giá trị, đường cơ sở, thay đổi, xu hướng). Các chi tiết như công thức tính
 điểm, chuẩn xếp loại, và **điểm tổng hợp theo từng mô hình ML** nằm trong thẻ
-ẤN-MỞ (`<details>`) để báo cáo không rối — mỗi mô hình (XGB/LGBM/RF/FT/MLP/LR)
-có một điểm cuối riêng (thống kê + tri thức y khoa + model đó + xu hướng), so
-sánh được model nào đẩy mức rủi ro cao hơn. Báo cáo kết thúc bằng mức độ đầy đủ
-dữ liệu (đánh dấu rõ chỉ số nào đang thiếu). Mọi suy luận ML đều ghi rõ là tham
-khảo bổ sung, kết luận cuối do bác sĩ xác nhận — kết quả đủ thông tin để bệnh
-nhân trình bác sĩ.
+ẤN-MỞ (`<details>`) để báo cáo không rối. Mọi suy luận ML đều ghi rõ là tham
+khảo bổ sung, kết luận cuối do bác sĩ xác nhận.
 
-### Quản lý cơ sở tri thức (`/rules`)
+### Quản lý cơ sở tri thức (`/knowledge`)
 
-Trang **http://127.0.0.1:8000/rules** dành cho bác sĩ: xem danh sách luật theo hệ cơ quan, **thêm/sửa/xóa luật** (nhập điều kiện chỉ số ghép AND/OR, độ nặng, chuyên khoa, link nguồn kèm số trang/chương/trích đoạn), **thêm hệ cơ quan mới** và **thêm chỉ số mới** — cơ sở tri thức mở rộng được mà không cần sửa code. Mọi thay đổi được validate trước khi ghi (sai cấu trúc, sai toán tử, độ nặng ngoài 0–1, link không hợp lệ đều bị từ chối kèm thông báo). Chi tiết: [docs/08](docs/08_Nguon_tri_thuc_va_xay_dung_luat.md).
+Trang **http://127.0.0.1:3000/knowledge** dành cho bác sĩ: xem danh sách luật
+theo hệ cơ quan, **thêm/sửa/xóa luật** (nhập điều kiện chỉ số ghép AND/OR, độ
+nặng, chuyên khoa, link nguồn kèm số trang/chương/trích đoạn), **thêm hệ cơ quan
+mới** và **thêm chỉ số mới** — cơ sở tri thức mở rộng được mà không cần sửa code.
+Mọi thay đổi được validate trước khi ghi (sai cấu trúc, sai toán tử, độ nặng
+ngoài 0–1, link không hợp lệ đều bị từ chối kèm thông báo). Chi tiết:
+[docs/08](docs/08_Nguon_tri_thuc_va_xay_dung_luat.md).
 
 API đầy đủ: **http://127.0.0.1:8000/docs** (Swagger).
 
@@ -121,13 +182,14 @@ API đầy đủ: **http://127.0.0.1:8000/docs** (Swagger).
 
 **MCP Copilot** là lớp trợ lý hội thoại phủ lên hệ thống 3 tầng đã đóng băng:
 hướng dẫn nhập đúng chỉ số/đơn vị, giải thích ý nghĩa từng tham số, gọi
-`POST /api/assess` và diễn giải kết quả Tier 3 thành ngôn ngữ dễ hiểu. Lớp này
-**không sửa** `src/`, **không ghi** vào kho dữ liệu bệnh nhân: chỉ đọc qua HTTP
-API và gọi `POST /api/assess` (stateless, không lưu kết quả). Disclaimer an toàn
-được hardcode và luôn gắn bởi code, không do LLM sinh ra.
+`POST /api/assess` và diễn giải kết quả Tier 3 thành ngôn ngữ dễ hiểu. Trong
+giao diện hợp nhất, chế độ **Tư vấn** dùng Copilot bridge (chỉ đọc hồ sơ qua
+HTTP API); chế độ **Ghi nhật ký** gọi API lõi để ghi dữ liệu. Cả hai dùng chung
+bệnh nhân đang chọn và cùng một luồng hội thoại. Disclaimer an toàn được hardcode
+và luôn gắn bởi code, không do LLM sinh ra.
 
-> ⚠️ Kết quả chỉ là **hỗ trợ quyết định** cho bác sĩ, **không phải chẩn đoán**.
-> Không dùng để tự mua, thay đổi hoặc ngừng thuốc.
+> **Lưu ý an toàn:** Kết quả chỉ là **hỗ trợ quyết định** cho bác sĩ,
+> **không phải chẩn đoán**. Không dùng để tự mua, thay đổi hoặc ngừng thuốc.
 
 Chạy (sau khi API cũ đã chạy ở cổng 8000):
 
@@ -147,18 +209,43 @@ Biến môi trường chính:
 
 | Biến | Mặc định | Ý nghĩa |
 |---|---|---|
-| `COPILOT_API_URL` | `http://127.0.0.1:8000` | API hệ thống cũ |
+| `COPILOT_CORE_API_URL` | `http://127.0.0.1:8000` | API lõi Python (ưu tiên; tránh trùng biến với BFF) |
+| `COPILOT_API_URL` | `http://127.0.0.1:8000` | Fallback tương thích cho API lõi |
 | `COPILOT_LLM_PROVIDER` | `auto` | `auto`/`ollama`/`openai`/`anthropic`/`none` |
 | `COPILOT_ALLOW_CLOUD` | `0` | Phải bật rõ ràng mới cho phép gửi dữ kiện ra cloud |
-| `COPILOT_OLLAMA_URL` | `http://127.0.0.1:11434` | Ollama cục bộ |
-| `COPILOT_OLLAMA_MODEL` | `llama3.1:8b` | Model cục bộ |
+| `COPILOT_OLLAMA_URL` | `http://127.0.0.1:11434` | Ollama cục bộ (WSL: dùng IP gateway Windows) |
+| `COPILOT_OLLAMA_MODEL` | `qwen3:8b` | Model cục bộ, Q4_K_M |
+| `COPILOT_OLLAMA_CONTEXT` | `32768` | Cửa sổ ngữ cảnh gửi kèm mỗi request |
 | `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | — | Chỉ dùng khi bật cloud |
 
 Không có LLM → Copilot vẫn chạy 100% bằng câu trả lời tất định. Kiểm thử offline:
 
 ```bash
-python3 scripts/test_copilot.py     # 40 test: parser, safety, luồng chat, isolation
+python3 scripts/test_copilot.py     # 66 test: parser, safety, luồng chat, small-talk, isolation
 ```
+
+### Tối ưu hóa độ trễ LLM
+
+- Model `qwen3:8b` chạy trên phần cứng CPU/iGPU (~7.8 token/giây). Để giảm độ trễ, Copilot dùng:
+  - `keep_alive: 30m` để model luôn nạp sẵn (`COPILOT_OLLAMA_KEEP_ALIVE`).
+  - Warmup khi server khởi động: nạp model và cache tiền tố prompt hệ thống (`/api/copilot/warmup`; frontend tự gọi khi vào trang `/copilot`).
+  - LLM chỉ sinh **một câu tóm tắt** cho diễn giải kết quả (tối đa ~30 từ) và **tối đa 2 câu** cho câu hỏi tiếp theo, thay vì sinh toàn bộ phát hiện/khuyến nghị. Phát hiện và khuyến nghị vẫn được sinh ra tất định.
+  - Context gửi LLM được gọn lại (`_compact_llm_context`): chỉ giữ mức nguy cơ, điểm số, hệ cần lưu ý, bằng chứng, dữ đủ, cờ khẩn cấp; bỏ các thành phần cồng kềnh.
+  - Kết quả đoán: lần gọi explain đầu tiên ~14–20s (nếu model chưa nạp), các lần sau ~5–6s; follow-up ~5s; đánh giá tất định ~30ms.
+- Nếu đầu ra LLM không qua kiểm duyệt an toàn (chẩn đoán, dự đoán bệnh, lời khuyên thuốc, số liệu không có trong context, injeciton), hệ thống **bỏ toàn bộ output LLM** và giữ nguyên câu trả lời tất định — không bao giờ làm sạch rồi chấp nhận.
+
+### Chế độ gỡ lỗi LLM (chỉ để kiểm tra)
+
+- Bật ô **"Debug LLM"** trên trang `/copilot` để xem raw output của Ollama, JSON đã parse, lý do kiểm duyệt, độ trễ, nhà cung cấp/mô hình, và kết quả chấp nhận/từ chối.
+- Raw output chỉ dùng để kiểm tra (audit). Kết quả lâm sàng hiển thị luôn là tất định khi validation thất bại.
+- Trường `method` trên mỗi trả lời assistants cho biết `llm_assisted` (dùng LLM) hay `deterministic` (không dùng LLM); mỗi tin nhắn trong hội thoại cũng gắn nhãn tương ứng cùng mô hình (ví dụ `LLM · qwen3:8b` vs `Tất định`).
+
+### Hội thoại & giao diện
+
+- Chào hỏi / cảm ơn / "bạn có thể làm gì" (`xin chào`, `hey`, `hi`, `what can you do`, …) được trả lời bằng Copilot (LLM-assisted khi bật, tất định khi tắt), không bị nhầm làm nhập chỉ số.
+- Cuộn tự động xuống tin nhắn mới nhất.
+- Mô hình hiện thị ở tiêu đề hội thoại (`Provider · Model`) và nhãn màu trên mỗi tin nhắn trợ lý (`badge` xanh da trời = LLM, xanh lá = tất định).
+- Các thẻ phụ ("Giải thích chỉ số", "Trạng thái Copilot", "Debug LLM") được thu gọn mặc định để không làm loãng luồng đánh giá chính.
 
 Chi tiết kiến trúc, quyết định và trạng thái: [docs/28](docs/28_Ke_hoach_MCP_Copilot_Layer.md).
 
@@ -178,7 +265,7 @@ So sánh 6 mô hình học máy trên `data/datasets/nhanes_merged.csv` (NHANES 
 kỳ, n = 16.314, 5 seed, impute median tránh data leakage). Kết quả tổng hợp ở
 `experiments/summary.json` / `summary.md`, chi tiết từng seed ở
 `experiments/EXP-ML-<MODEL>-<SEED>/`. Giao diện so sánh luận giải từng mô hình:
-**http://127.0.0.1:8000/benchmark** (gồm cả mức độ đầy đủ dữ liệu — lưu ý
+**http://127.0.0.1:3000/benchmark** (gồm cả mức độ đầy đủ dữ liệu — lưu ý
 `glucose_fasting` thiếu 52% trong dataset gộp).
 
 ## Schema dữ liệu đầu vào
@@ -224,16 +311,20 @@ scripts/
   run_temporal_validation.py # kiểm định temporally trên NHANES-LMF
   run_complete_case_check.py # kiểm định complete-case analysis
   e2e_test.py               # kiểm thử end-to-end (35 checks)
-  run_copilot.sh            # start/stop/restart web UI Copilot (cổng 8001)
-  test_copilot.py           # 40 test offline cho Copilot Layer
+  run_copilot.sh            # start/stop/restart Copilot bridge (cổng 8001)
+  test_copilot.py           # 62 test offline cho Copilot Layer
 
 mcp_copilot/                # lớp Copilot độc lập (không import src/)
   tools.py                  #   5 công cụ: guide_input, explain_metric, call_assess,
   │                         #   explain_result, follow_up + handle_chat
   server.py                 #   MCP server stdio/SSE (tùy chọn)
   webapp.py                 #   FastAPI bridge cho giao diện chat (cổng 8001)
-  static/copilot.html       #   giao diện chat một trang (không cần build)
+  static/copilot.html       #   giao diện chat legacy (không cần build)
   requirements.txt          #   phụ thuộc riêng (không đụng requirements.txt gốc)
+
+web/                        # SPA React + BFF Node (giao diện chính)
+  src/pages/CopilotPage.tsx #   Copilot & Nhật ký hợp nhất (Tư vấn / Ghi nhật ký)
+  server/index.mjs          #   BFF proxy /api/core/* và /api/copilot/*
 
 docs/                         # báo cáo nghiên cứu theo giai đoạn (01 → 28)
 experiments/                  # evidence package + bảng tổng hợp benchmark
