@@ -1341,20 +1341,22 @@ button {
   align-items: flex-end;
   gap: 8px;
   max-width: 100%;
+  padding-right: 52px;
+  box-sizing: border-box;
 }
 
 .composer-wrapper .textarea {
   flex: 1;
   min-height: 44px;
-  max-height: 140px;
-  resize: none;
-  padding-right: 44px;
+  max-height: 200px;
+  resize: vertical;
+  padding-right: 48px;
   box-sizing: border-box;
 }
 
 .btn-send {
   position: absolute;
-  right: 0;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
   width: 36px;
