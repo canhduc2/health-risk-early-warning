@@ -4,7 +4,6 @@ import {
   Bug,
   Check,
   CheckCircle2,
-  ChevronRight,
   CircleHelp,
   ClipboardCheck,
   Copy,
@@ -26,19 +25,6 @@ import { usePatient } from "../components/PatientContext";
 import { useToast } from "../components/Toast";
 import { Alert, LoadingBlock, PageHeader, RiskBadge } from "../components/Ui";
 import i18n, { levelLabel, metricName, metricUnit, specialtyLabel, systemLabel } from "../i18n";
-
-const METRIC_KEYS = [
-  "systolic_bp",
-  "diastolic_bp",
-  "heart_rate",
-  "glucose",
-  "glucose_fasting",
-  "hba1c",
-  "creatinine",
-  "egfr",
-  "spo2",
-  "bmi",
-];
 
 type ChatChannel = "consult" | "journal";
 
@@ -347,17 +333,13 @@ export function CopilotPage() {
   const [useLlm, setUseLlm] = useState(true);
   const [debugLlm, setDebugLlm] = useState(false);
   const [llmDebug, setLlmDebug] = useState<LlmDebug | null>(null);
-  const [values, setValues] = useState<Record<string, string>>({});
+  const [values, setValues] = useState<Record<string, number>>({});
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [assessment, setAssessment] = useState<AssessmentResult | null>(null);
   const [explanation, setExplanation] = useState<CopilotExplanation | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [copilotStatus, setCopilotStatus] = useState<CopilotStatus | null>(null);
-  const [guide, setGuide] = useState<GuidePayload | null>(null);
-  const [guideBusy, setGuideBusy] = useState(false);
-  const [metricToExplain, setMetricToExplain] = useState("systolic_bp");
-  const [metricExplanation, setMetricExplanation] = useState<Record<string, unknown> | null>(null);
-  const [metricBusy, setMetricBusy] = useState(false);
   const [chatMode, setChatMode] = useState<ChatChannel>("consult");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatDraft, setChatDraft] = useState("");
@@ -368,8 +350,6 @@ export function CopilotPage() {
     provider?: string;
     model?: string;
   }>({});
-  const [showSecondary, setShowSecondary] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [useDate, setUseDate] = useState(false);
   const [measurementDate, setMeasurementDate] = useState(todayInput);
   const [resetBusy, setResetBusy] = useState(false);
@@ -386,26 +366,23 @@ export function CopilotPage() {
   };
 
   const loadPatientValues = useCallback(async (pid: string) => {
-    if (!pid.trim()) {
-      setValues({});
-      return;
-    }
+    if (!pid.trim()) return;
     try {
       const table = await api.core.records(pid);
       const dates = [...table.dates].sort();
-      const next: Record<string, string> = {};
-      for (const metric of METRIC_KEYS) {
-        for (let index = dates.length - 1; index >= 0; index -= 1) {
-          const cell = table.grid[dates[index]]?.[metric];
-          if (cell?.value !== null && cell?.value !== undefined) {
-            next[metric] = String(cell.value);
-            break;
+      // Load latest values for all metrics automatically
+      const latest: Record<string, number> = {};
+      for (const date of dates) {
+        const cells = table.grid[date];
+        if (cells) {
+          for (const [metric, cell] of Object.entries(cells)) {
+            if (cell?.value !== null && cell?.value !== undefined) {
+              latest[metric] = Number(cell.value);
+            }
           }
         }
       }
-      setValues(next);
-      const firstMetric = METRIC_KEYS.find((metric) => next[metric] !== undefined);
-      if (firstMetric) setMetricToExplain(firstMetric);
+      setValues(latest);
     } catch {
       setValues({});
     }
@@ -423,28 +400,23 @@ export function CopilotPage() {
     setAssessment(null);
     setExplanation(null);
     setWarnings([]);
-    setGuide(null);
-    setMetricExplanation(null);
     setChatMessages([]);
     setChatDraft("");
-    setSuggestions([]);
     setChatState({});
     setValues({});
     setLlmDebug(null);
     if (patientId) void loadPatientValues(patientId);
   }, [patientId, loadPatientValues]);
 
-  const parsedMetrics = useMemo(() => parseMetrics(values), [values]);
-
   useEffect(() => {
     setChatState((current) => ({
-      metrics: parsedMetrics,
+      metrics: values,
       mode,
       timestamp: (current.timestamp as string) || new Date().toISOString().slice(0, 10),
       assessment: current.assessment ?? null,
       last_expected: current.last_expected ?? null,
     }));
-  }, [parsedMetrics, mode]);
+  }, [values, mode]);
 
   // Cuộn tự động xuống tin nhắn mới nhất khi có tin nhắn mới hoặc xong bận.
   useEffect(() => {
@@ -453,17 +425,8 @@ export function CopilotPage() {
     el.scrollTop = el.scrollHeight;
   }, [chatMessages, chatBusy]);
 
-  const updateMetric = (metric: string, value: string) => {
-    setValues((current) => ({ ...current, [metric]: value }));
-    setAssessment(null);
-    setExplanation(null);
-    setWarnings([]);
-    setLlmDebug(null);
-    setChatState((current) => ({ ...current, assessment: null, last_expected: null }));
-  };
-
-  const assess = async () => {
-    if (!Object.keys(parsedMetrics).length) {
+  const runAssessment = async () => {
+    if (!Object.keys(values).length) {
       toast.error(t("copilot.empty"));
       return;
     }
@@ -477,7 +440,7 @@ export function CopilotPage() {
       // the user never waits on the local model just to see the assessment.
       const data = await api.copilot.assess({
         patient_id: patientId,
-        metrics: parsedMetrics,
+        metrics: values,
         mode,
         audience,
         use_llm: false,
@@ -491,10 +454,9 @@ export function CopilotPage() {
       setAssessment(assessmentResult);
       setExplanation(data.explanation || null);
       setWarnings(data.warnings || []);
-      setGuide(null);
       setChatState((current) => ({
         ...current,
-        metrics: parsedMetrics,
+        metrics: values,
         mode,
         timestamp: new Date().toISOString().slice(0, 10),
         assessment: assessmentResult,
@@ -517,33 +479,6 @@ export function CopilotPage() {
       toast.error(error instanceof Error ? error.message : t("common.error"));
     } finally {
       setBusy(false);
-    }
-  };
-
-  const askGuide = async () => {
-    setGuideBusy(true);
-    try {
-      setGuide(await api.copilot.guide({
-        patient_id: patientId,
-        collected_metrics: parsedMetrics,
-        mode,
-        use_llm: useLlm,
-      }));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("common.error"));
-    } finally {
-      setGuideBusy(false);
-    }
-  };
-
-  const explainMetric = async () => {
-    setMetricBusy(true);
-    try {
-      setMetricExplanation(await api.copilot.metric({ metric: metricToExplain, audience }));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("common.error"));
-    } finally {
-      setMetricBusy(false);
     }
   };
 
@@ -618,7 +553,6 @@ export function CopilotPage() {
         setAssessment(null);
         setExplanation(null);
         setWarnings([]);
-        setGuide(null);
       } else {
         const data = await api.copilot.chat({
           patient_id: patientId,
@@ -647,7 +581,7 @@ export function CopilotPage() {
             setValues((current) => {
               const next = { ...current };
               for (const [metric, value] of Object.entries(stateMetrics as Record<string, unknown>)) {
-                if (next[metric] === undefined || next[metric] === "") next[metric] = String(value);
+                if (next[metric] === undefined) next[metric] = Number(value);
               }
               return next;
             });
@@ -690,7 +624,6 @@ export function CopilotPage() {
       setAssessment(null);
       setExplanation(null);
       setWarnings([]);
-      setGuide(null);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("common.error"));
     } finally {
@@ -753,7 +686,7 @@ export function CopilotPage() {
       <div className="stack-lg">
         <PatientBar mode={mode} onModeChange={setMode} />
 
-        {/* ========== Primary: input + đánh giá ========== */}
+        {/* ========== Primary: automatic patient record + assessment ========== */}
         <div className="grid grid--2" style={{ alignItems: "start" }}>
           <section className="card">
             <div className="card__header">
@@ -766,85 +699,28 @@ export function CopilotPage() {
               <div className="card__icon"><Activity size={18} /></div>
             </div>
 
-            <div className="row" style={{ marginBottom: 14 }}>
-              <div className="field" style={{ flex: 1, minWidth: 170 }}>
-                <label htmlFor="copilot-audience">{t("copilot.audience")}</label>
-                <select id="copilot-audience" className="select" value={audience} onChange={(event) => setAudience(event.target.value)}>
-                  <option value="patient">{t("copilot.patient")}</option>
-                  <option value="doctor">{t("copilot.doctor")}</option>
-                </select>
-              </div>
-              <label className="row" style={{ gap: 6, fontSize: 12, marginTop: 20 }}>
-                <input type="checkbox" checked={useLlm} onChange={(event) => setUseLlm(event.target.checked)} />
-                {t("copilot.llm")}
-              </label>
-              <label
-                className="row debug-toggle"
-                style={{ gap: 6, fontSize: 12, marginTop: 20 }}
-                title={t("copilot.debugHint")}
-              >
-                <input type="checkbox" checked={debugLlm} onChange={(event) => setDebugLlm(event.target.checked)} disabled={!useLlm} />
-                <Bug size={13} /> {t("copilot.debug")}
-              </label>
-            </div>
+            <label className="row" style={{ gap: 6, fontSize: 12, marginTop: 20 }}>
+              <input type="checkbox" checked={useLlm} onChange={(event) => setUseLlm(event.target.checked)} />
+              {t("copilot.llm")}
+            </label>
+            <label
+              className="row debug-toggle"
+              style={{ gap: 6, fontSize: 12, marginTop: 20 }}
+              title={t("copilot.debugHint")}
+            >
+              <input type="checkbox" checked={debugLlm} onChange={(event) => setDebugLlm(event.target.checked)} disabled={!useLlm} />
+              <Bug size={13} /> {t("copilot.debug")}
+            </label>
 
-            <div className="metric-input-grid">
-              {METRIC_KEYS.map((metric) => (
-                <div className="metric-input" key={metric}>
-                  <label htmlFor={`metric-${metric}`}>
-                    {metricName(metric)}
-                    <span>{metricUnit(metric)}</span>
-                  </label>
-                  <input
-                    id={`metric-${metric}`}
-                    className="input"
-                    inputMode="decimal"
-                    value={values[metric] || ""}
-                    onChange={(event) => updateMetric(metric, event.target.value)}
-                    placeholder="—"
-                  />
-                </div>
-              ))}
-            </div>
-
-            <div className="row" style={{ marginTop: 16 }}>
-              <button type="button" className="btn btn--primary" onClick={() => void assess()} disabled={busy}>
+            <div style={{ marginTop: 16 }}>
+              <button type="button" className="btn btn--primary" onClick={() => void runAssessment()} disabled={busy || !Object.keys(values).length}>
                 {busy ? <span className="spinner" /> : <WandSparkles size={15} />}
                 {busy ? (assessment ? t("copilot.explaining") : t("copilot.assessing")) : t("copilot.assess")}
               </button>
-              <button type="button" className="btn" onClick={() => void askGuide()} disabled={guideBusy}>
-                {guideBusy ? <span className="spinner" /> : <ChevronRight size={15} />}
-                {t("copilot.guide")}
-              </button>
-              <button
-                type="button"
-                className="btn btn--ghost"
-                onClick={() => {
-                  setValues({});
-                  setAssessment(null);
-                  setExplanation(null);
-                  setLlmDebug(null);
-                  setChatState((current) => ({ ...current, metrics: {}, assessment: null }));
-                }}
-              >
-                {t("copilot.clear")}
-              </button>
+              {busy && useLlm ? (
+                <p className="small muted" style={{ margin: "8px 0 0" }}>{t("copilot.llmWait")}</p>
+              ) : null}
             </div>
-            {busy && useLlm ? (
-              <p className="small muted" style={{ margin: "8px 0 0" }}>{t("copilot.llmWait")}</p>
-            ) : null}
-
-            {guide ? (
-              <div className="alert alert--info" style={{ marginTop: 14 }}>
-                <CircleHelp size={16} />
-                <div>
-                  <strong>{t("copilot.guideTitle")}</strong>
-                  <div style={{ marginTop: 4 }}>{guide.next_question || guide.metric_name_vi || ""}</div>
-                  {guide.progress ? <div className="small muted" style={{ marginTop: 3 }}>{guide.progress}</div> : null}
-                  {guide.warnings?.length ? <div className="small" style={{ marginTop: 4 }}>{guide.warnings.join(" · ")}</div> : null}
-                </div>
-              </div>
-            ) : null}
 
             {warnings.length ? (
               <Alert variant="warning">
@@ -951,10 +827,6 @@ export function CopilotPage() {
                           {openDetailId === message.id ? (
                             <div className="message-detail">
                               <div className="detail-row">
-                                <span className="detail-label">{t("copilot.detailHandler")}</span>
-                                <span className="detail-value">{message.stage || "—"}</span>
-                              </div>
-                              <div className="detail-row">
                                 <span className="detail-label">{t("copilot.detailMethod")}</span>
                                 <span className="detail-value">{message.method || "—"}</span>
                               </div>
@@ -998,7 +870,7 @@ export function CopilotPage() {
               {chatBusy ? <div className="row small muted"><span className="spinner" /> {t("common.loading")}</div> : null}
             </div>
             <div className="quick-prompts" style={{ margin: "12px 0" }}>
-              {visiblePrompts.map((prompt) => (
+              {visiblePrompts.map((prompt: string) => (
                 <button type="button" className="quick-prompt" key={prompt} onClick={() => void sendChat(prompt)}>
                   {prompt}
                 </button>
@@ -1063,89 +935,21 @@ export function CopilotPage() {
                 </button>
               </div>
             ) : null}
-          </section>
-
-          {/* Debug LLM — hiện rõ system prompt, user prompt và raw output để kiểm tra. */}
-          {debugLlm && llmDebug ? (
-            <details className="card debug-panel" open={true}>
-              <summary className="card__header" style={{ cursor: "pointer", padding: "10px 14px" }}>
-                <Bug size={13} /> {t("copilot.debugTitle")}
-                <span style={{ marginLeft: 8, fontSize: 11, color: "var(--text-muted)" }}>
-                  {llmDebug.accepted ? t("copilot.debugAccepted") : t("copilot.debugRejected")}
-                </span>
-              </summary>
-              <LlmDebugPanel debug={llmDebug} onClear={() => setLlmDebug(null)} />
-            </details>
-          ) : null}
-
-          {/* ========== Secondary: giải thích chỉ số + trạng thái (thu gọn mặc định) ========== */}
-          <div className="stack">
-            <button
-              type="button"
-              className="btn btn--ghost btn--sm"
-              style={{ alignSelf: "flex-start" }}
-              onClick={() => setShowSecondary((s) => !s)}
-              aria-expanded={showSecondary}
-            >
-              <CircleHelp size={13} />
-              {showSecondary ? t("common.collapse") : t("common.expand")}
-              {` · ${t("copilot.moreDetails")}`}
-            </button>
-            {showSecondary ? (
-              <div className="grid grid--2" style={{ alignItems: "start", marginTop: 10 }}>
-                <section className="card">
-                  <div className="card__header">
-                    <div>
-                      <h2 className="card__title">{t("copilot.metricExplanation")}</h2>
-                      <p className="card__subtitle">{t("copilot.significance")}</p>
-                    </div>
-                    <div className="card__icon"><CircleHelp size={18} /></div>
-                  </div>
-                  <div className="row">
-                    <select className="select" value={metricToExplain} onChange={(event) => setMetricToExplain(event.target.value)} aria-label={t("assessment.metric")}>
-                      {METRIC_KEYS.map((metric) => <option key={metric} value={metric}>{metricName(metric)}</option>)}
-                    </select>
-                    <button type="button" className="btn btn--sm" onClick={() => void explainMetric()} disabled={metricBusy}>
-                      {metricBusy ? <span className="spinner" /> : <ChevronRight size={14} />}
-                      {t("common.details")}
-                    </button>
-                  </div>
-                  {metricExplanation ? (
-                    <div className="stack-sm" style={{ marginTop: 12 }}>
-                      <div className="row"><span className="badge badge--primary">{String(metricExplanation.name_vi || metricName(metricToExplain))}</span><span className="badge">{String(metricExplanation.normal_range || "—")}</span></div>
-                      <p className="small soft" style={{ margin: 0 }}>{String(metricExplanation.significance || "")}</p>
-                      <p className="small muted" style={{ margin: 0 }}>{String(metricExplanation.when_to_worry || "")}</p>
-                      <div className="disclaimer-bar"><ShieldCheck size={14} /><span>{String(metricExplanation.disclaimer || t("copilot.disclaimer"))}</span></div>
-                    </div>
-                  ) : null}
-                </section>
-
-                <section className="card">
-                  <div className="card__header">
-                    <div>
-                      <h2 className="card__title">{t("copilot.status")}</h2>
-                      <p className="card__subtitle">{t("copilot.cloudOff")}</p>
-                    </div>
-                    <div className="card__icon"><Brain size={18} /></div>
-                  </div>
-                  {copilotStatus ? (
-                    <div className="stack-sm">
-                      <div className="small muted">{copilotStatus.api?.base_url || copilotStatus.ollama_url || ""}</div>
-                      {cloudDisabled ? <Alert variant="success"><CheckCircle2 size={15} /><div>{t("copilot.cloudOff")}</div></Alert> : null}
-                    </div>
-                  ) : (
-                    <LoadingBlock label={t("common.loading")} />
-                  )}
-                  <div className="disclaimer-bar" style={{ marginTop: 12 }}>
-                    <ShieldCheck size={15} />
-                    <span>{t("copilot.disclaimer")}</span>
-                  </div>
-                </section>
-              </div>
+            {debugLlm && llmDebug ? (
+              <details className="card debug-panel" open={true}>
+                <summary className="card__header" style={{ cursor: "pointer", padding: "10px 14px" }}>
+                  <Bug size={13} /> {t("copilot.debugTitle")}
+                  <span style={{ marginLeft: 8, fontSize: 11, color: "var(--text-muted)" }}>
+                    {llmDebug.accepted ? t("copilot.debugAccepted") : t("copilot.debugRejected")}
+                  </span>
+                </summary>
+                <LlmDebugPanel debug={llmDebug} onClear={() => setLlmDebug(null)} />
+              </details>
             ) : null}
-          </div>
+          </section>
         </div>
       </div>
     </div>
   );
 }
+
