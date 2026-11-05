@@ -168,6 +168,10 @@ DISEASE_TERMS = {
 # that entire sentence already exists verbatim in the tool-provided context.
 # This blocks paraphrased lifestyle/treatment advice such as
 # "Continue to monitor..." when the tool only supplied a different sentence.
+#
+# Patterns are intentionally specific: they target clear advice/recommendation
+# intent (should/must/nên/phải/hãy/khuyến nghị/...), not neutral factual
+# statements like "các yếu tố cần lưu ý" (factors to pay attention to).
 _ADVICE_CUE = re.compile(
     r"\b(you|the patient|patients?)\s+"
     r"(should|must|need to|ought to|have to|may want to)\b"
@@ -175,16 +179,15 @@ _ADVICE_CUE = re.compile(
     r"suggested)\b"
     r"|\b(it is important to|it's important to)\b"
     r"|(^|[.!?]\s*)(continue|maintain|monitor|follow|keep|make sure|be sure|"
-    r"ensure|consider|try|start|stop|take|avoid|eat|exercise|reduce|increase|"
-    r"limit|quit|see|contact|talk|discuss|book|schedule|stay|drink|sleep|"
-    r"rest|apply|use|add|check|measure|track|record|review|consult|seek|call|"
-    r"visit|attend|get|have|do not|don't|never)\b"
-    r"|\b(bạn|bệnh nhân)\s+(nên|cần|phải|không nên)\b"
-    r"|\b(khuyến nghị|đề nghị|tư vấn|nên|cần|phải)\b"
+    r"ensure|consider|try|start|stop|avoid|eat|exercise|reduce|increase|"
+    r"limit|quit|drink|sleep|rest|take|apply|use|add|check|measure|track|"
+    r"record|review|consult|seek|call|visit|attend|do not|don't|never)\b"
+    r"|\b(bạn|bệnh nhân)\s+(nên|phải|không nên)\b"
+    r"|\b(khuyến nghị|đề nghị|tư vấn|nên|phải)\b"
     r"|\b(không được|đừng|chớ)\b"
     r"|(^|[.!?]\s*)(hãy|tiếp tục|duy trì|theo dõi|ăn|uống|tập|giảm|tăng|"
-    r"tránh|ngừng|đi|liên hệ|gặp|trao đổi|đặt lịch|nghỉ|ngủ|bổ sung|"
-    r"kiểm tra|đo|ghi lại|xem|gọi|đến|khám)\b",
+    r"tránh|ngừng|liên hệ|gặp|trao đổi|đặt lịch|nghỉ|ngủ|bổ sung|"
+    r"kiểm tra|đo|ghi lại|xem|khám)\b",
     re.IGNORECASE,
 )
 
@@ -199,12 +202,19 @@ def _normalize_prose(text: str) -> str:
 
 
 def _contains_ungrounded_advice(body: str, allowed_text: str) -> bool:
-    allowed = _normalize_prose(allowed_text)
+    """Không cho LLM viết bất kỳ câu khuyến nghị/lời khuyên nào.
+
+    Khuyến nghị và bước tiếp theo được sinh ra tất định bởi hệ thống. LLM
+    chỉ được diễn giải lại事実 (risk level, score, bằng chứng) một cách
+    tự nhiên, không được đưa ra lời khuyên, mệnh lệnh hay khuyến nghị mới.
+    Mỗi câu chứa gợi ý khuyến nghị (nên/cần/should/must/…) từ LLM đều bị
+    chặn, dù câu đó có xuất hiện trong context hay không.
+    """
     for sentence in _SENTENCE_SPLIT_RE.split(body):
         candidate = _normalize_prose(sentence)
         if not candidate:
             continue
-        if _ADVICE_CUE.search(sentence) and candidate not in allowed:
+        if _ADVICE_CUE.search(sentence):
             return True
     return False
 
