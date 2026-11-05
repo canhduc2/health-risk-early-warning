@@ -148,42 +148,44 @@ function ExplanationView({ explanation }: { explanation: CopilotExplanation }) {
 
       {/* Dual summary display: deterministic + LLM stacked with clear separation */}
       {summaryLlm || summaryDet ? (
-        <div className="summary-dual" style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
-          <div className="summary-version" style={{ padding: 12, borderRadius: 8, border: `1px solid ${isLlm ? "var(--info)" : "var(--success)"}`, background: isLlm ? "color-mix(in srgb, var(--info) 8%, transparent)" : "color-mix(in srgb, var(--success) 8%, transparent)" }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
-              <span style={{ fontWeight: 700, fontSize: 12, color: isLlm ? "var(--info)" : "var(--success)" }}>
+        <div className="summary-dual" style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+          <div className="summary-version" style={{ padding: 14, borderRadius: 8, border: `1px solid ${isLlm ? "var(--info)" : "var(--success)"}`, background: isLlm ? "color-mix(in srgb, var(--info) 10%, transparent)" : "color-mix(in srgb, var(--success) 10%, transparent)" }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
+              <span style={{ fontWeight: 800, fontSize: 13, color: isLlm ? "var(--info)" : "var(--success)" }}>
                 {isLlm ? "🤖" : "🖥️"}
               </span>
-              <span style={{ fontWeight: 700, fontSize: 12 }}>{isLlm ? t("copilot.llmLabel") : t("copilot.deterministicLabel")}</span>
+              <span style={{ fontWeight: 800, fontSize: 13 }}>{isLlm ? t("copilot.llmLabel") : t("copilot.deterministicLabel")}</span>
               <span className="small muted">{isLlm ? t("copilot.llmRole") : t("copilot.deterministicRole")}</span>
             </div>
-            <div style={{ fontSize: 13, lineHeight: 1.7 }}>{summaryLlm || summaryDet}</div>
+            <div style={{ fontSize: 14, lineHeight: 1.8 }}>{summaryLlm || summaryDet}</div>
           </div>
           {summaryDet && summaryDet !== summaryLlm && (
-            <div className="summary-version" style={{ padding: 12, borderRadius: 8, border: "1px dashed var(--border)", background: "var(--bg-soft)" }}>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
-                <span style={{ fontWeight: 700, fontSize: 12, color: "var(--success)" }}>🖥️</span>
-                <span style={{ fontWeight: 700, fontSize: 12 }}>{t("copilot.deterministicLabel")}</span>
+            <div className="summary-version" style={{ padding: 14, borderRadius: 8, border: "1px dashed var(--border)", background: "var(--bg-soft)" }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
+                <span style={{ fontWeight: 800, fontSize: 13, color: "var(--success)" }}>🖥️</span>
+                <span style={{ fontWeight: 800, fontSize: 13 }}>{t("copilot.deterministicLabel")}</span>
                 <span className="small muted">{t("copilot.deterministicRole")}</span>
               </div>
-              <div style={{ fontSize: 13, lineHeight: 1.7 }}>{summaryDet}</div>
+              <div style={{ fontSize: 14, lineHeight: 1.8 }}>{summaryDet}</div>
             </div>
           )}
         </div>
       ) : null}
 
       {explanation.urgent?.length ? (
-        <Alert variant="danger">
-          <strong>{t("copilot.urgent")}</strong>
-          <ul className="finding-list" style={{ marginTop: 7 }}>
-            {explanation.urgent.map((item) => <li key={item}>{item}</li>)}
-          </ul>
-        </Alert>
+        <div style={{ marginTop: 16 }}>
+          <Alert variant="danger">
+            <strong>{t("copilot.urgent")}</strong>
+            <ul className="finding-list" style={{ marginTop: 8 }}>
+              {explanation.urgent.map((item) => <li key={item}>{item}</li>)}
+            </ul>
+          </Alert>
+        </div>
       ) : null}
 
       {explanation.key_findings?.length ? (
-        <div style={{ marginTop: 14 }}>
-          <div className="field__label" style={{ marginBottom: 7 }}>{t("copilot.findings")}</div>
+        <div style={{ marginTop: 18 }}>
+          <div className="field__label" style={{ marginBottom: 8 }}>{t("copilot.findings")}</div>
           <ul className="finding-list">
             {explanation.key_findings.map((item) => <li key={item}>{item}</li>)}
           </ul>
@@ -191,8 +193,8 @@ function ExplanationView({ explanation }: { explanation: CopilotExplanation }) {
       ) : null}
 
       {explanation.recommendations?.length ? (
-        <div style={{ marginTop: 14 }}>
-          <div className="field__label" style={{ marginBottom: 7 }}>{t("copilot.recommendations")}</div>
+        <div style={{ marginTop: 18 }}>
+          <div className="field__label" style={{ marginBottom: 8 }}>{t("copilot.recommendations")}</div>
           <ul className="rec-list">
             {explanation.recommendations.map((item) => <li key={item}>{item}</li>)}
           </ul>
@@ -200,7 +202,7 @@ function ExplanationView({ explanation }: { explanation: CopilotExplanation }) {
       ) : null}
 
       {explanation.data_sufficiency_note ? (
-        <div className="alert" style={{ marginTop: 14 }}>
+        <div className="alert" style={{ marginTop: 18 }}>
           <CircleHelp size={15} />
           <div>{explanation.data_sufficiency_note}</div>
         </div>
@@ -208,11 +210,11 @@ function ExplanationView({ explanation }: { explanation: CopilotExplanation }) {
 
       {/* Rule references with source links */}
       {explanation.rule_references?.length ? (
-        <div style={{ marginTop: 14 }}>
-          <div className="field__label" style={{ marginBottom: 7 }}>{t("copilot.ruleReferences")}</div>
-          <ul className="finding-list" style={{ marginTop: 7 }}>
+        <div style={{ marginTop: 18 }}>
+          <div className="field__label" style={{ marginBottom: 8 }}>{t("copilot.ruleReferences")}</div>
+          <ul className="finding-list" style={{ marginTop: 8 }}>
             {explanation.rule_references.map((ref) => (
-              <li key={ref.rule_id} style={{ fontSize: 12.5, lineHeight: 1.5 }}>
+              <li key={ref.rule_id} style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 6 }}>
                 <span style={{ fontWeight: 700, color: "var(--text)" }}>{ref.rule_name}</span>{" "}
                 <span className="small muted" style={{ fontSize: 11 }}>[{(ref.severity ?? 0).toFixed(1)}]</span>
                 {ref.source_url ? (
@@ -876,7 +878,7 @@ export function CopilotPage() {
                 </button>
               ))}
             </div>
-            <div className="composer-row">
+            <div className="composer-wrapper">
               <textarea
                 className="textarea"
                 rows={1}
@@ -890,8 +892,8 @@ export function CopilotPage() {
                   }
                 }}
               />
-              <button type="button" className="btn btn--primary btn--icon" onClick={() => void sendChat()} disabled={chatBusy || !chatDraft.trim()}>
-                {chatBusy ? <span className="spinner" /> : <Send size={16} />}
+              <button type="button" className="btn-send" onClick={() => void sendChat()} disabled={chatBusy || !chatDraft.trim()} title="Gửi">
+                {chatBusy ? <span className="spinner" /> : <Send size={14} />}
               </button>
             </div>
             {chatMode === "journal" ? (

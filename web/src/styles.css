@@ -1335,16 +1335,58 @@ button {
   background: var(--bg-elevated);
 }
 
-.composer-row {
+.composer-wrapper {
+  position: relative;
   display: flex;
   align-items: flex-end;
   gap: 8px;
+  max-width: 100%;
 }
 
-.composer-row .textarea {
+.composer-wrapper .textarea {
+  flex: 1;
   min-height: 44px;
   max-height: 140px;
   resize: none;
+  padding-right: 44px;
+  box-sizing: border-box;
+}
+
+.btn-send {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-send:not(:disabled):hover {
+  background: color-mix(in srgb, var(--primary) 85%, transparent);
+  transform: translateY(-50%) scale(1.05);
+}
+
+.btn-send:disabled {
+  background: var(--text-muted);
+  border-color: var(--text-muted);
+  color: rgba(255,255,255,0.5);
+  cursor: not-allowed;
+}
+
+.btn-send:disabled:hover {
+  transform: translateY(-50%);
 }
 
 .composer-tools {
