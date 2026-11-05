@@ -141,27 +141,47 @@ function strengthText(assessment: AssessmentResult): string {
 
 function ExplanationView({ explanation }: { explanation: CopilotExplanation }) {
   const { t } = useTranslation();
+  const summaryLlm = explanation.summary_llm || explanation.summary;
+  const summaryDet = explanation.summary_deterministic || explanation.summary;
+  const isLlm = explanation.method === "llm_assisted" && !!explanation.summary_llm;
+
   return (
     <section className="card card--accent">
       <div className="card__header">
         <div>
           <div className="eyebrow" style={{ marginBottom: 4 }}><Sparkles size={12} /> {t("copilot.explanation")}</div>
           <h2 className="card__title">{t("copilot.summary")}</h2>
-          <p className="card__subtitle">{explanation.summary || ""}</p>
         </div>
         <div className="stack-sm" style={{ alignItems: "flex-end" }}>
           {explanation.risk_level ? <RiskBadge level={explanation.risk_level} /> : null}
-          {explanation.method ? (
-            <span className="badge badge--info" title={explanation.method === "llm_assisted" ? t("copilot.llmRole") : t("copilot.deterministicRole")}>
-              {explanation.method === "llm_assisted" ? t("copilot.llm") : t("copilot.deterministic")}
-            </span>
-          ) : null}
-          {explanation.method ? (
-            <p className="small muted" style={{ maxWidth: 220, margin: 0, textAlign: "right" }}>
-              {explanation.method === "llm_assisted" ? t("copilot.llmRole") : t("copilot.deterministicRole")}
-            </p>
-          ) : null}
+          <span className={`badge ${isLlm ? "badge--llm" : "badge--det"}`} title={isLlm ? t("copilot.llmRole") : t("copilot.deterministicRole")}>
+            {isLlm ? `${t("copilot.llmLabel")} · ${explanation.method_llm || t("copilot.llm")}` : `${t("copilot.deterministicLabel")} · ${t("copilot.deterministic")}`}
+          </span>
         </div>
+      </div>
+
+      {/* Dual summary display: deterministic + LLM side by side */}
+      <div className="summary-dual" style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="summary-version" style={{ padding: 10, borderRadius: 8, border: `1px solid ${isLlm ? "var(--info)" : "var(--success)"}`, background: isLlm ? "color-mix(in srgb, var(--info) 6%, transparent)" : "color-mix(in srgb, var(--success) 6%, transparent)" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
+            <span style={{ fontWeight: 700, fontSize: 12, color: isLlm ? "var(--info)" : "var(--success)" }}>
+              {isLlm ? "🤖 " : "🖥️ "}
+            </span>
+            <span style={{ fontWeight: 700, fontSize: 12 }}>{isLlm ? t("copilot.llmLabel") : t("copilot.deterministicLabel")}</span>
+            <span className="small muted">{isLlm ? t("copilot.llmRole") : t("copilot.deterministicRole")}</span>
+          </div>
+          <div style={{ fontSize: 13, lineHeight: 1.6 }}>{summaryLlm}</div>
+        </div>
+        {summaryDet && summaryDet !== summaryLlm && (
+          <div className="summary-version" style={{ padding: 10, borderRadius: 8, border: "1px dashed var(--border)", background: "var(--bg-soft)" }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
+              <span style={{ fontWeight: 700, fontSize: 12, color: "var(--success)" }}>🖥️ </span>
+              <span style={{ fontWeight: 700, fontSize: 12 }}>{t("copilot.deterministicLabel")}</span>
+              <span className="small muted">{t("copilot.deterministicRole")}</span>
+            </div>
+            <div style={{ fontSize: 13, lineHeight: 1.6 }}>{summaryDet}</div>
+          </div>
+        )}
       </div>
 
       {explanation.urgent?.length ? (
@@ -195,6 +215,41 @@ function ExplanationView({ explanation }: { explanation: CopilotExplanation }) {
         <div className="alert" style={{ marginTop: 14 }}>
           <CircleHelp size={15} />
           <div>{explanation.data_sufficiency_note}</div>
+        </div>
+      ) : null}
+
+      {/* Rule references with source links */}
+      {explanation.rule_references?.length ? (
+        <div style={{ marginTop: 14 }}>
+          <div className="field__label" style={{ marginBottom: 7 }}>{t("copilot.ruleReferences")}</div>
+          <ul className="finding-list" style={{ marginTop: 7 }}>
+            {explanation.rule_references.map((ref) => (
+              <li key={ref.rule_id} style={{ fontSize: 12.5, lineHeight: 1.5 }}>
+                <span style={{ fontWeight: 700, color: "var(--text)" }}>{ref.rule_name}</span>{" "}
+                <span className="small muted" style={{ fontSize: 11 }}>[{(ref.severity ?? 0).toFixed(1)}]</span>
+                {ref.source_url ? (
+                  <>
+                    <br />
+                    <a
+                      href={ref.source_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="small muted"
+                      style={{ color: "var(--info)", textDecoration: "underline", wordBreak: "break-all" }}
+                    >
+                      {ref.source_url}
+                    </a>
+                  </>
+                ) : null}
+                {ref.source_excerpt ? (
+                  <>
+                    <br />
+                    <span className="small" style={{ color: "var(--text-muted)", fontStyle: "italic" }}>"{ref.source_excerpt}"</span>
+                  </>
+                ) : null}
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
 
@@ -1008,11 +1063,14 @@ export function CopilotPage() {
             ) : null}
           </section>
 
-          {/* Debug LLM — chỉ hiện khi bật, luôn thu gọn để không làm loãng luồng chính. */}
+          {/* Debug LLM — hiện rõ system prompt, user prompt và raw output để kiểm tra. */}
           {debugLlm && llmDebug ? (
-            <details className="card debug-panel" open={false}>
+            <details className="card debug-panel" open={true}>
               <summary className="card__header" style={{ cursor: "pointer", padding: "10px 14px" }}>
                 <Bug size={13} /> {t("copilot.debugTitle")}
+                <span style={{ marginLeft: 8, fontSize: 11, color: "var(--text-muted)" }}>
+                  {llmDebug.accepted ? t("copilot.debugAccepted") : t("copilot.debugRejected")}
+                </span>
               </summary>
               <LlmDebugPanel debug={llmDebug} onClear={() => setLlmDebug(null)} />
             </details>
