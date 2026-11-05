@@ -282,6 +282,8 @@ class RiskScorer:
                     "current": r.current,
                     "baseline_mean": r.baseline_mean,
                     "z_score": r.z_score,
+                    "trend": r.trend,
+                    "unit": self._metric_meta(r.metric)["unit"],
                     "message": (
                         f"{r.metric}: giá trị {r.current:.1f} lệch {r.z_score:+.2f}σ "
                         f"so với trung bình cá nhân {r.baseline_mean:.1f} (xu hướng {r.trend})"
@@ -348,9 +350,11 @@ class RiskScorer:
         total = sum(components[k] * w[k] for k in w)
         total = round(min(1.0, max(0.0, total)), 3)
 
-        # C2: thiếu bằng chứng bắt buộc (thiếu model + thiếu Tầng 1) -> KHÔNG
-        # phân tầng bằng ngưỡng chung; trả INSUFFICIENT_DATA kèm data_sufficiency.
-        if ml_score is None and not records:
+        # C2: thiếu bằng chứng bắt buộc (thiếu model + thiếu Tầng 1 + thiếu luật)
+        # -> KHÔNG phân tầng bằng ngưỡng chung; trả INSUFFICIENT_DATA. Nhưng nếu
+        # có luật lâm sàng kích hoạt, vẫn cho ra đánh giá dựa trên tri thức
+        # (bậc cao nhất là TRUNG_BINH do trọng số knowledge = 0.35).
+        if ml_score is None and not records and not hits:
             return RiskResult(
                 risk_level="INSUFFICIENT_DATA",
                 risk_score=total,
