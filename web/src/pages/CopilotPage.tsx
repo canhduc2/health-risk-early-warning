@@ -335,6 +335,7 @@ export function CopilotPage() {
   const [useLlm, setUseLlm] = useState(true);
   const [debugLlm, setDebugLlm] = useState(false);
   const [llmDebug, setLlmDebug] = useState<LlmDebug | null>(null);
+  const [llmProcessing, setLlmProcessing] = useState(false);
   const [values, setValues] = useState<Record<string, number>>({});
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [assessment, setAssessment] = useState<AssessmentResult | null>(null);
@@ -468,14 +469,25 @@ export function CopilotPage() {
       if (useLlm) {
         // The LLM only rewrites the validated draft. If it is slow or fails
         // safety checks, the deterministic explanation above stays visible.
-        const enhanced = await api.copilot.explain({
-          assessment: assessmentResult,
-          audience,
-          use_llm: true,
-          debug_llm: debugLlm,
-        });
-        setExplanation(enhanced);
-        setLlmDebug(enhanced.llm_debug || null);
+        setLlmProcessing(true);
+        try {
+          const enhanced = await api.copilot.explain({
+            assessment: assessmentResult,
+            audience,
+            use_llm: true,
+            debug_llm: debugLlm,
+          });
+          setExplanation(enhanced);
+          setLlmDebug(enhanced.llm_debug || null);
+          const debug = (enhanced.llm_debug || {}) as Record<string, unknown>;
+          if (debug.method === 'llm_assisted') {
+            toast.success('LLM đã xử lý (' + Number(debug.latency_ms || 0).toFixed(0) + 'ms)');
+          } else {
+            toast.error('LLM bị từ chối, dùng bản tất định');
+          }
+        } finally {
+          setLlmProcessing(false);
+        }
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("common.error"));
@@ -722,6 +734,11 @@ export function CopilotPage() {
               {busy && useLlm ? (
                 <p className="small muted" style={{ margin: "8px 0 0" }}>{t("copilot.llmWait")}</p>
               ) : null}
+              {llmProcessing && (
+                <p className="small" style={{ margin: "8px 0 0", color: "var(--info)" }}>
+                  <span className="spinner" /> Đang gọi mô hình AI (qwen3:8b)...
+                </p>
+              )}
             </div>
 
             {warnings.length ? (
