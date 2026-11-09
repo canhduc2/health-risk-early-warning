@@ -489,8 +489,20 @@ export function CopilotPage() {
           setLlmProcessing(false);
         }
       }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("common.error"));
+    } catch (error: any) {
+      // More detailed error messages
+      if (error.message?.includes('NetworkError') || error.message?.includes('fetch') || error.message?.includes('Failed to fetch')) {
+        toast.error('Không kết nối được server. Hãy kiểm tra API lõi (cổng 8000) và Copilot (cổng 8001) đã chạy chưa.');
+      } else if (error.message?.includes('404')) {
+        toast.error('Endpoint không tìm thấy. Kiểm tra BFF (cổng 3000) đã chạy chưa.');
+      } else if (error.message?.includes('500')) {
+        toast.error('Lỗi server. Xem log Copilot hoặc API lõi để biết chi tiết.');
+      } else if (error.message?.includes('408') || error.message?.includes('timeout')) {
+        toast.error('Yêu cầu quá thời gian. Model AI có thể đang tải lần đầu, vui lòng thử lại.');
+      } else {
+        toast.error(error instanceof Error ? error.message : t("common.error"));
+      }
+      console.error('Assess error:', error);
     } finally {
       setBusy(false);
     }
