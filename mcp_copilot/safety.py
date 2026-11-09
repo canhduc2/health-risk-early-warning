@@ -172,6 +172,8 @@ DISEASE_TERMS = {
 # Patterns are intentionally specific: they target clear advice/recommendation
 # intent (should/must/nên/phải/hãy/khuyến nghị/...), not neutral factual
 # statements like "các yếu tố cần lưu ý" (factors to pay attention to).
+# Patterns that only describe metrics/facts (e.g., "bạn là 152 mmHg") are
+# NOT treated as advice.
 _ADVICE_CUE = re.compile(
     r"\b(you|the patient|patients?)\s+"
     r"(should|must|need to|ought to|have to|may want to)\b"
@@ -185,8 +187,8 @@ _ADVICE_CUE = re.compile(
     r"|\b(bạn|bệnh nhân)\s+(nên|phải|không nên)\b"
     r"|\b(khuyến nghị|đề nghị|tư vấn|nên|phải)\b"
     r"|\b(không được|đừng|chớ)\b"
-    r"|(^|[.!?]\s*)(hãy|tiếp tục|duy trì|theo dõi|ăn|uống|tập|giảm|tăng|"
-    r"tránh|ngừng|liên hệ|gặp|trao đổi|đặt lịch|nghỉ|ngủ|bổ sung|"
+    r"|(^|[.!?]\s*)(hãy|tiếp tục|duy trì|theo dõi|ăn|uống|tập|giảm|tránh|"
+    r"ngừng|liên hệ|gặp|trao đổi|đặt lịch|nghỉ|ngủ|bổ sung|"
     r"kiểm tra|đo|ghi lại|xem|khám)\b",
     re.IGNORECASE,
 )
@@ -205,14 +207,39 @@ def _contains_ungrounded_advice(body: str, allowed_text: str) -> bool:
     """Không cho LLM viết bất kỳ câu khuyến nghị/lời khuyên nào.
 
     Khuyến nghị và bước tiếp theo được sinh ra tất định bởi hệ thống. LLM
-    chỉ được diễn giải lại事実 (risk level, score, bằng chứng) một cách
+    chỉ được diễn giải lại事实 (risk level, score, bằng chứng) một cách
     tự nhiên, không được đưa ra lời khuyên, mệnh lệnh hay khuyến nghị mới.
-    Mỗi câu chứa gợi ý khuyến nghị (nên/cần/should/must/…) từ LLM đều bị
-    chặn, dù câu đó có xuất hiện trong context hay không.
+
+    Một câu bị coi là khuyến nghị chỉ khi nó chứa gợi ý khuyến nghị rõ ràng
+    (nên/phải/hãy/should/must/…) VÀ không chứa các chỉ số đã có trong context.
+    Nếu một câu chỉ diễn đạt lại các chỉ số đã có trong context (ví dụ:
+    "huyết áp tâm thu của bạn là 152 mmHg, vượt ngưỡng bình thường"), nó
+    KHÔNG bị coi là khuyến nghị.
     """
+    # Lấy danh sách các tên chỉ số đã có trong context để không chặn
+    # các câu đơn giản diễn đạt lại thông tin đã có.
+    context_metric_names = set()
+    if allowed_text:
+        for m in re.finditer(
+            r"\b(systolic_bp|diastolic_bp|heart_rate|glucose|glucose_fasting|"
+            r"hba1c|creatinine|egfr|spo2|bmi|Huyết áp tâm thu|Huyết áp tâm trương|"
+            r"Nhịp tim|Đường huyết|HbA1c|Creatinine|eGFR|SpO₂|BMI|"
+            r"huyết áp tâm thu|huyết áp tâm trương|nhịp tim|đường huyết|"
+            r"đường huyết lúc đói|creatinine|egfr|spo₂|bmi|mmHg|mmol/L|"
+            r"mg/dL|%|bpm)\b",
+            body,
+            re.IGNORECASE,
+        ):
+            context_metric_names.add(m.group(0).lower())
+
     for sentence in _SENTENCE_SPLIT_RE.split(body):
         candidate = _normalize_prose(sentence)
         if not candidate:
+            continue
+        # Nếu câu này chứa tên chỉ số từ context, nó là diễn đạt lại事実,
+        # không phải khuyến nghị mới -> bỏ qua.
+        candidate_lower = candidate.lower()
+        if any(m in candidate_lower for m in context_metric_names):
             continue
         if _ADVICE_CUE.search(sentence):
             return True
